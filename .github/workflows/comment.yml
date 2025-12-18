@@ -9,5 +9,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v6
+
       - name: Post Comment
         uses: ./
