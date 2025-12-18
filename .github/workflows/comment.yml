@@ -1,0 +1,13 @@
+name: Comment Action
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  post-comment:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Post Comment
+        uses: ./
