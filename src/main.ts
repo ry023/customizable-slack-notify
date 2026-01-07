@@ -1,7 +1,7 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
-import { WebClient } from '@slack/web-api'
-import { extractImgSrc } from './extract.js'
+import {WebClient} from '@slack/web-api'
+import {extractImgSrc} from './extract.js'
 
 /**
  * The main function for the action.
@@ -48,7 +48,7 @@ export async function run(): Promise<void> {
             },
             {
               type: 'mrkdwn',
-              text: `*${payload.sender?.username || 'unknown'}* : <https://example.com|Issueタイトル #999>`
+              text: `*${payload.sender?.login || 'unknown'}* : <${payload.issue?.html_url}|${payload.issue?.title} #${payload.issue?.number}>`
             }
           ]
         }
@@ -78,7 +78,7 @@ export async function run(): Promise<void> {
           throw new Error(`Failed to fetch image: ${src}`)
         }
         const buffer = await res.arrayBuffer()
-        return { src, buffer: Buffer.from(buffer) }
+        return {src, buffer: Buffer.from(buffer)}
       })
     )
 
@@ -122,7 +122,7 @@ export async function run(): Promise<void> {
     // complete upload flow
     if (fileIds.length > 0) {
       const completeRes = await slackClient.files.completeUploadExternal({
-        files: [{ id: fileIds[0] }, ...fileIds.slice(1).map((id) => ({ id }))],
+        files: [{id: fileIds[0]}, ...fileIds.slice(1).map((id) => ({id}))],
         channel_id: slackChannel,
         thread_ts: postRes.ts
       })
