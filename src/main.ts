@@ -107,14 +107,14 @@ export async function run(): Promise<void> {
           if (file.url_private) imageUrls.push(file.url_private)
         })
       }
+    }
 
-      const postRes = await slackClient.chat.postMessage({
-        channel: slackChannel,
-        blocks: createMessageBlocks(payload, imageUrls)
-      })
-      if (!postRes.ok) {
-        throw new Error(`Slack API error: ${postRes.error}`)
-      }
+    const postRes = await slackClient.chat.postMessage({
+      channel: slackChannel,
+      blocks: createMessageBlocks(payload, imageUrls)
+    })
+    if (!postRes.ok) {
+      throw new Error(`Slack API error: ${postRes.error}`)
     }
   } catch (error: any) {
     core.setFailed(error.message)
