@@ -122505,11 +122505,11 @@ async function run() {
                         {
                             type: 'image',
                             image_url: payload.sender?.avatar_url || '',
-                            alt_text: 'cute cat'
+                            alt_text: 'payload.sender.login'
                         },
                         {
                             type: 'mrkdwn',
-                            text: `*${payload.sender?.username || 'unknown'}* : <https://example.com|Issueタイトル #999>`
+                            text: `*${payload.sender?.login ?? 'unknown'}* : <${payload.issue?.html_url}|${payload.issue?.title} #${payload.issue?.number}>`
                         }
                     ]
                 }
