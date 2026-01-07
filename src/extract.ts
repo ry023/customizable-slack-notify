@@ -6,7 +6,7 @@ export function extractImgSrc(html: string): string[] {
   const imgSrcs: string[] = []
   dom('img').each((_, elem) => {
     const src = dom(elem).attr('src')
-    if (src) {
+    if (src && src.startsWith('https://private-user-images.githubusercontent.com/')) {
       imgSrcs.push(src)
     }
   })
