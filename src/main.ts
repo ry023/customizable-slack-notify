@@ -125,14 +125,13 @@ export async function run(): Promise<void> {
 function createMessageBlocks(
   payload: (typeof github.context)['payload']
 ): (KnownBlock | Block)[] {
+  let body = payload.comment?.body || ''
+
+  // imgタグを`(image)`に置換
+  const imgTagRegex = /<img [^>]*src="[^"]*"[^>]*>/g
+  body = body.replace(imgTagRegex, '(image)')
+
   return [
-    {
-      type: 'section',
-      text: {
-        type: 'mrkdwn',
-        text: payload.comment?.body || ''
-      }
-    },
     {
       type: 'context',
       elements: [
@@ -146,6 +145,13 @@ function createMessageBlocks(
           text: `*${payload.sender?.login ?? 'unknown'}* : <${payload.issue?.html_url}|${payload.issue?.title} #${payload.issue?.number}>`
         }
       ]
+    },
+    {
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: payload.comment?.body || ''
+      }
     }
   ]
 }

@@ -122571,14 +122571,11 @@ async function run() {
     }
 }
 function createMessageBlocks(payload) {
+    let body = payload.comment?.body || '';
+    // imgタグを`(image)`に置換
+    const imgTagRegex = /<img [^>]*src="[^"]*"[^>]*>/g;
+    body = body.replace(imgTagRegex, '(image)');
     return [
-        {
-            type: 'section',
-            text: {
-                type: 'mrkdwn',
-                text: payload.comment?.body || ''
-            }
-        },
         {
             type: 'context',
             elements: [
@@ -122592,6 +122589,13 @@ function createMessageBlocks(payload) {
                     text: `*${payload.sender?.login ?? 'unknown'}* : <${payload.issue?.html_url}|${payload.issue?.title} #${payload.issue?.number}>`
                 }
             ]
+        },
+        {
+            type: 'section',
+            text: {
+                type: 'mrkdwn',
+                text: payload.comment?.body || ''
+            }
         }
     ];
 }
