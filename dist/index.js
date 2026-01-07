@@ -31241,6 +31241,7 @@ function requireGithub () {
 
 var githubExports = requireGithub();
 
+//import {WebClient} from '@slack/web-api'
 /**
  * The main function for the action.
  *
@@ -31271,6 +31272,24 @@ async function run() {
         });
         coreExports.info(`Comment body: ${comment.data.body}`);
         coreExports.info(`Comment body_html: ${comment.data.body_html}`);
+        const slackToken = coreExports.getInput('slack-token');
+        const slackChannel = coreExports.getInput('slack-channel');
+        //const slackClient = new WebClient(slackToken)
+        //await slackClient.chat.postMessage({
+        //  channel: slackChannel,
+        //  text: `New comment on issue #${issueNumber} by ${sender}`
+        //})
+        await fetch('https://slack.com/api/chat.postMessage', {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${slackToken}`,
+                'Content-Type': 'application/json; charset=utf-8'
+            },
+            body: JSON.stringify({
+                channel: slackChannel,
+                text: `test message: ${comment.data.body_html}`
+            })
+        });
     }
     catch (error) {
         coreExports.setFailed(error.message);

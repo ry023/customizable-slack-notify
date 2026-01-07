@@ -45,17 +45,17 @@ export async function run(): Promise<void> {
     //  channel: slackChannel,
     //  text: `New comment on issue #${issueNumber} by ${sender}`
     //})
-    await fetch("https://slack.com/api/chat.postMessage", {
-      method: "POST",
+    await fetch('https://slack.com/api/chat.postMessage', {
+      method: 'POST',
       headers: {
         Authorization: `Bearer ${slackToken}`,
-        "Content-Type": "application/json; charset=utf-8",
+        'Content-Type': 'application/json; charset=utf-8'
       },
       body: JSON.stringify({
         channel: slackChannel,
-        text: "CI finished ✅",
-      }),
-    });
+        text: `test message: ${comment.data.body_html}`
+      })
+    })
   } catch (error) {
     core.setFailed((error as Error).message)
   }
