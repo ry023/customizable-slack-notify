@@ -122461,7 +122461,8 @@ function extractImgSrc(html) {
     const imgSrcs = [];
     dom('img').each((_, elem) => {
         const src = dom(elem).attr('src');
-        if (src) {
+        if (src &&
+            src.startsWith('https://private-user-images.githubusercontent.com/')) {
             imgSrcs.push(src);
         }
     });
@@ -122500,7 +122501,7 @@ async function run() {
         // post message
         const postRes = await slackClient.chat.postMessage({
             channel: slackChannel,
-            blocks: createMessageBlocks(payload)
+            ...createMessageBlocks(payload)
         });
         if (!postRes.ok) {
             throw new Error(`Slack API error: ${postRes.error}`);
@@ -122570,37 +122571,45 @@ function createMessageBlocks(payload) {
     let body = payload.comment?.body || '';
     // imgタグを`(image)`に置換
     const imgTagRegex = /<img [^>]*src="[^"]*"[^>]*>/g;
-    body = body.replace(imgTagRegex, '(image)');
-    return [
-        {
-            type: 'context',
-            elements: [
-                {
-                    type: 'image',
-                    image_url: payload.sender?.avatar_url || '',
-                    alt_text: 'payload.sender.login'
-                },
-                {
-                    type: 'mrkdwn',
-                    text: `*${payload.sender?.login ?? 'unknown'}* : <${payload.issue?.html_url}|${payload.issue?.title} #${payload.issue?.number}>`
-                }
-            ]
-        },
-        {
-            type: 'rich_text',
-            elements: [
-                {
-                    type: 'rich_text_quote',
-                    elements: [
-                        {
-                            type: 'text',
-                            text: body
-                        }
-                    ]
-                }
-            ]
-        }
-    ];
+    body = body.replace(imgTagRegex, '[スレッドに画像を表示]');
+    return {
+        blocks: [
+            {
+                type: 'context',
+                elements: [
+                    {
+                        type: 'image',
+                        image_url: payload.sender?.avatar_url || '',
+                        alt_text: 'payload.sender.login'
+                    },
+                    {
+                        type: 'mrkdwn',
+                        text: `*${payload.sender?.login ?? 'unknown'}* : <${payload.issue?.html_url}|${payload.issue?.title} #${payload.issue?.number}>`
+                    }
+                ]
+            }
+        ],
+        attachments: [
+            {
+                blocks: [
+                    {
+                        type: 'rich_text',
+                        elements: [
+                            {
+                                type: 'rich_text_quote',
+                                elements: [
+                                    {
+                                        type: 'text',
+                                        text: body
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    };
 }
 
 /**

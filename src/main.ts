@@ -1,7 +1,7 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
-import {KnownBlock, Block, WebClient} from '@slack/web-api'
-import {extractImgSrc} from './extract.js'
+import { KnownBlock, Block, WebClient } from '@slack/web-api'
+import { extractImgSrc } from './extract.js'
 
 /**
  * The main function for the action.
@@ -55,7 +55,7 @@ export async function run(): Promise<void> {
             throw new Error(`Failed to fetch image: ${src}`)
           }
           const buffer = await res.arrayBuffer()
-          return {src, buffer: Buffer.from(buffer)}
+          return { src, buffer: Buffer.from(buffer) }
         })
       )
 
@@ -100,8 +100,8 @@ export async function run(): Promise<void> {
       if (fileIds.length > 0) {
         const completeRes = await slackClient.files.completeUploadExternal({
           files: [
-            {id: fileIds[0]},
-            ...fileIds.slice(1).map((id) => ({id}))
+            { id: fileIds[0] },
+            ...fileIds.slice(1).map((id) => ({ id }))
           ],
           channel_id: slackChannel,
           thread_ts: postRes.ts
@@ -118,9 +118,10 @@ export async function run(): Promise<void> {
   }
 }
 
-function createMessageBlocks(
-  payload: (typeof github.context)['payload']
-): {blocks: (KnownBlock | Block)[], attachments: {blocks: (KnownBlock | Block)[]}[]} {
+function createMessageBlocks(payload: (typeof github.context)['payload']): {
+  blocks: (KnownBlock | Block)[]
+  attachments: { blocks: (KnownBlock | Block)[] }[]
+} {
   let body = payload.comment?.body || ''
 
   // imgタグを`(image)`に置換
@@ -142,7 +143,7 @@ function createMessageBlocks(
             text: `*${payload.sender?.login ?? 'unknown'}* : <${payload.issue?.html_url}|${payload.issue?.title} #${payload.issue?.number}>`
           }
         ]
-      },
+      }
     ],
     attachments: [
       {
