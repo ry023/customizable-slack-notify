@@ -122497,8 +122497,15 @@ async function run() {
                 accept: 'application/vnd.github.html+json'
             }
         });
+        // post message
+        const postRes = await slackClient.chat.postMessage({
+            channel: slackChannel,
+            blocks: createMessageBlocks(payload)
+        });
+        if (!postRes.ok) {
+            throw new Error(`Slack API error: ${postRes.error}`);
+        }
         const imgSrcs = extractImgSrc(comment.data.body_html || '');
-        let fileIds = [];
         if (imgSrcs.length > 0) {
             const imageBlobs = await Promise.all(imgSrcs.map(async (src) => {
                 const res = await fetch(src);
@@ -122508,6 +122515,7 @@ async function run() {
                 const buffer = await res.arrayBuffer();
                 return { src, buffer: Buffer.from(buffer) };
             }));
+            let fileIds = [];
             for (const image of imageBlobs) {
                 // image.srcから拡張子を取得
                 const path = new URL(image.src).pathname;
@@ -122538,17 +122546,7 @@ async function run() {
                 }
                 fileIds.push(uploadUrlRes.file_id);
             }
-        }
-        // post message
-        const postRes = await slackClient.chat.postMessage({
-            channel: slackChannel,
-            blocks: createMessageBlocks(payload, fileIds)
-        });
-        if (!postRes.ok) {
-            throw new Error(`Slack API error: ${postRes.error}`);
-        }
-        // complete image upload flow
-        if (fileIds.length > 0) {
+            // complete image upload flow
             if (fileIds.length > 0) {
                 const completeRes = await slackClient.files.completeUploadExternal({
                     files: [
@@ -122568,7 +122566,7 @@ async function run() {
         coreExports.setFailed(error.message);
     }
 }
-function createMessageBlocks(payload, fileIds = []) {
+function createMessageBlocks(payload) {
     let body = payload.comment?.body || '';
     // imgタグを`(image)`に置換
     const imgTagRegex = /<img [^>]*src="[^"]*"[^>]*>/g;
@@ -122601,14 +122599,7 @@ function createMessageBlocks(payload, fileIds = []) {
                     ]
                 }
             ]
-        },
-        ...fileIds.map((fileId, i) => ({
-            type: 'image',
-            slack_file: {
-                id: fileId
-            },
-            alt_text: `Uploaded image (${i + 1})`
-        }))
+        }
     ];
 }
 
