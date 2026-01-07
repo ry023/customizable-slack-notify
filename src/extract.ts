@@ -1,4 +1,4 @@
-import {JSDOM} from 'jsdom'
+import { JSDOM } from 'jsdom'
 
 export function extractImgSrc(html: string): string[] {
   const dom = new JSDOM(html)
@@ -6,7 +6,7 @@ export function extractImgSrc(html: string): string[] {
   const imgElements = document.querySelectorAll('img')
   const imgSrcs: string[] = []
 
-  imgElements.forEach(img => {
+  imgElements.forEach((img) => {
     const src = img.getAttribute('src')
     if (src) {
       imgSrcs.push(src)

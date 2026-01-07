@@ -1,7 +1,7 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
-import {WebClient} from '@slack/web-api'
-import {extractImgSrc} from './extract.js'
+import { WebClient } from '@slack/web-api'
+import { extractImgSrc } from './extract.js'
 
 /**
  * The main function for the action.
@@ -43,13 +43,13 @@ export async function run(): Promise<void> {
     const imgSrcs = extractImgSrc(comment.data.body_html || '')
 
     const imageBlobs = await Promise.all(
-      imgSrcs.map(async src => {
+      imgSrcs.map(async (src) => {
         const res = await fetch(src)
         if (!res.ok) {
           throw new Error(`Failed to fetch image: ${src}`)
         }
         const buffer = await res.arrayBuffer()
-        return {src, buffer: Buffer.from(buffer)}
+        return { src, buffer: Buffer.from(buffer) }
       })
     )
 
@@ -58,9 +58,13 @@ export async function run(): Promise<void> {
       // start upload flow
       const uploadUrlRes = await slackClient.files.getUploadURLExternal({
         filename: image.src.split('/').pop() || 'image',
-        length: image.buffer.length,
+        length: image.buffer.length
       })
-      if (!uploadUrlRes.ok || !uploadUrlRes.upload_url || !uploadUrlRes.file_id) {
+      if (
+        !uploadUrlRes.ok ||
+        !uploadUrlRes.upload_url ||
+        !uploadUrlRes.file_id
+      ) {
         throw new Error(`Failed to get upload URL for image: ${image.src}`)
       }
 
@@ -68,9 +72,9 @@ export async function run(): Promise<void> {
       const uploadRes = await fetch(uploadUrlRes.upload_url, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/octet-stream',
+          'Content-Type': 'application/octet-stream'
         },
-        body: image.buffer,
+        body: image.buffer
       })
       if (!uploadRes.ok) {
         throw new Error(`Failed to upload image to Slack: ${image.src}`)
@@ -81,9 +85,9 @@ export async function run(): Promise<void> {
     // complete upload flow
     if (fileIds.length > 0) {
       const completeRes = await slackClient.files.completeUploadExternal({
-        files: [{id: fileIds[0]}, ...fileIds.slice(1).map(id => ({id}))],
+        files: [{ id: fileIds[0] }, ...fileIds.slice(1).map((id) => ({ id }))],
         channel_id: slackChannel,
-        thread_ts: postRes.ts,
+        thread_ts: postRes.ts
       })
       if (!completeRes.ok) {
         throw new Error(`Failed to complete file upload: ${completeRes.error}`)
