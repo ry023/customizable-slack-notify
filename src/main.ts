@@ -28,7 +28,10 @@ export async function run(): Promise<void> {
     const comment = await oct.rest.issues.getComment({
       owner: github.context.repo.owner,
       repo: github.context.repo.repo,
-      comment_id: payload.comment.id
+      comment_id: payload.comment.id,
+      headers: {
+        accept: 'application/vnd.github.html+json'
+      }
     })
 
     core.info(`Comment body: ${comment.data.body}`)
