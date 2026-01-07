@@ -57,7 +57,7 @@ export async function run(): Promise<void> {
       })
     })
     core.info(`Slack response status: ${res.status}`)
-    core.info(`Slack response body: ${res.body}`)
+    core.info(`Slack response body: ${await res.json()}`)
   } catch (error) {
     core.setFailed((error as Error).message)
   }
