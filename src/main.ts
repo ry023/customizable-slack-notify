@@ -1,7 +1,7 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
-import {KnownBlock, Block, WebClient} from '@slack/web-api'
-import {extractImgSrc} from './extract.js'
+import { KnownBlock, Block, WebClient } from '@slack/web-api'
+import { extractImgSrc } from './extract.js'
 
 /**
  * The main function for the action.
@@ -21,8 +21,6 @@ export async function run(): Promise<void> {
       return
     }
 
-    payload.sender
-
     const slackToken = core.getInput('slack-token')
     const slackChannel = core.getInput('slack-channel')
 
@@ -41,17 +39,8 @@ export async function run(): Promise<void> {
 
     const imgSrcs = extractImgSrc(comment.data.body_html || '')
 
-    if (imgSrcs.length === 0) {
-      const postRes = await slackClient.chat.postMessage({
-        channel: slackChannel,
-        blocks: createMessageBlocks(payload)
-      })
-      if (!postRes.ok) {
-        throw new Error(`Slack API error: ${postRes.error}`)
-      }
-      core.info('No images found in the comment.')
-      return
-    } else {
+    let imageUrls: string[] = []
+    if (imgSrcs.length > 0) {
       const imageBlobs = await Promise.all(
         imgSrcs.map(async (src) => {
           const res = await fetch(src)
@@ -59,7 +48,7 @@ export async function run(): Promise<void> {
             throw new Error(`Failed to fetch image: ${src}`)
           }
           const buffer = await res.arrayBuffer()
-          return {src, buffer: Buffer.from(buffer)}
+          return { src, buffer: Buffer.from(buffer) }
         })
       )
 
@@ -104,26 +93,37 @@ export async function run(): Promise<void> {
       if (fileIds.length > 0) {
         const completeRes = await slackClient.files.completeUploadExternal({
           files: [
-            {id: fileIds[0]},
-            ...fileIds.slice(1).map((id) => ({id}))
+            { id: fileIds[0] },
+            ...fileIds.slice(1).map((id) => ({ id }))
           ],
-          channel_id: slackChannel,
-          blocks: createMessageBlocks(payload)
+          channel_id: slackChannel
         })
         if (!completeRes.ok) {
           throw new Error(
             `Failed to complete file upload: ${completeRes.error}`
           )
         }
+        completeRes.files?.forEach((file) => {
+          if (file.url_private) imageUrls.push(file.url_private)
+        })
+      }
+
+      const postRes = await slackClient.chat.postMessage({
+        channel: slackChannel,
+        blocks: createMessageBlocks(payload, imageUrls)
+      })
+      if (!postRes.ok) {
+        throw new Error(`Slack API error: ${postRes.error}`)
       }
     }
-  } catch (error) {
-    core.setFailed((error as Error).message)
+  } catch (error: any) {
+    core.setFailed(error.message)
   }
 }
 
 function createMessageBlocks(
-  payload: (typeof github.context)['payload']
+  payload: (typeof github.context)['payload'],
+  imageUrls: string[] = []
 ): (KnownBlock | Block)[] {
   let body = payload.comment?.body || ''
 
@@ -147,11 +147,24 @@ function createMessageBlocks(
       ]
     },
     {
-      type: 'section',
-      text: {
-        type: 'mrkdwn',
-        text: body
+      type: 'rich_text',
+      elements: [
+        {
+          type: 'rich_text_quote',
+          elements: [
+            {
+              type: 'text',
+              text: body
+            }
+          ]
+        }
+      ]
+    },
+    ...imageUrls.map((url) => ({
+      type: 'image',
+      slack_file: {
+        url
       }
-    }
+    }))
   ]
 }

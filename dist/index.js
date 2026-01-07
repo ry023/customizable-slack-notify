@@ -122484,7 +122484,6 @@ async function run() {
             coreExports.info('Comment body is empty. Nothing to post to Slack.');
             return;
         }
-        payload.sender;
         const slackToken = coreExports.getInput('slack-token');
         const slackChannel = coreExports.getInput('slack-channel');
         const slackClient = new distExports.WebClient(slackToken);
@@ -122499,18 +122498,8 @@ async function run() {
             }
         });
         const imgSrcs = extractImgSrc(comment.data.body_html || '');
-        if (imgSrcs.length === 0) {
-            const postRes = await slackClient.chat.postMessage({
-                channel: slackChannel,
-                blocks: createMessageBlocks(payload)
-            });
-            if (!postRes.ok) {
-                throw new Error(`Slack API error: ${postRes.error}`);
-            }
-            coreExports.info('No images found in the comment.');
-            return;
-        }
-        else {
+        let imageUrls = [];
+        if (imgSrcs.length > 0) {
             const imageBlobs = await Promise.all(imgSrcs.map(async (src) => {
                 const res = await fetch(src);
                 if (!res.ok) {
@@ -122557,12 +122546,22 @@ async function run() {
                         { id: fileIds[0] },
                         ...fileIds.slice(1).map((id) => ({ id }))
                     ],
-                    channel_id: slackChannel,
-                    blocks: createMessageBlocks(payload)
+                    channel_id: slackChannel
                 });
                 if (!completeRes.ok) {
                     throw new Error(`Failed to complete file upload: ${completeRes.error}`);
                 }
+                completeRes.files?.forEach((file) => {
+                    if (file.url_private)
+                        imageUrls.push(file.url_private);
+                });
+            }
+            const postRes = await slackClient.chat.postMessage({
+                channel: slackChannel,
+                blocks: createMessageBlocks(payload, imageUrls)
+            });
+            if (!postRes.ok) {
+                throw new Error(`Slack API error: ${postRes.error}`);
             }
         }
     }
@@ -122570,7 +122569,7 @@ async function run() {
         coreExports.setFailed(error.message);
     }
 }
-function createMessageBlocks(payload) {
+function createMessageBlocks(payload, imageUrls = []) {
     let body = payload.comment?.body || '';
     // imgタグを`(image)`に置換
     const imgTagRegex = /<img [^>]*src="[^"]*"[^>]*>/g;
@@ -122591,12 +122590,25 @@ function createMessageBlocks(payload) {
             ]
         },
         {
-            type: 'section',
-            text: {
-                type: 'mrkdwn',
-                text: payload.comment?.body || ''
+            type: 'rich_text',
+            elements: [
+                {
+                    type: 'rich_text_quote',
+                    elements: [
+                        {
+                            type: 'text',
+                            text: body
+                        }
+                    ]
+                }
+            ]
+        },
+        ...imageUrls.map((url) => ({
+            type: 'image',
+            slack_file: {
+                url
             }
-        }
+        }))
     ];
 }
 
