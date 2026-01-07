@@ -1,17 +1,14 @@
-import { JSDOM } from 'jsdom'
+import * as cheerio from 'cheerio'
 
 export function extractImgSrc(html: string): string[] {
-  const dom = new JSDOM(html)
-  const document = dom.window.document
-  const imgElements = document.querySelectorAll('img')
-  const imgSrcs: string[] = []
+  const dom = cheerio.load(html)
 
-  imgElements.forEach((img) => {
-    const src = img.getAttribute('src')
+  const imgSrcs: string[] = []
+  dom('img').each((_, elem) => {
+    const src = dom(elem).attr('src')
     if (src) {
       imgSrcs.push(src)
     }
   })
-
   return imgSrcs
 }
