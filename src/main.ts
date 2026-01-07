@@ -1,7 +1,7 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
-import {KnownBlock, Block, WebClient} from '@slack/web-api'
-import {extractImgSrc} from './extract.js'
+import { KnownBlock, Block, WebClient } from '@slack/web-api'
+import { extractImgSrc } from './extract.js'
 
 /**
  * The main function for the action.
@@ -38,8 +38,7 @@ export async function run(): Promise<void> {
     })
 
     const imgSrcs = extractImgSrc(comment.data.body_html || '')
-
-    let imageUrls: string[] = []
+    let fileIds: string[] = []
     if (imgSrcs.length > 0) {
       const imageBlobs = await Promise.all(
         imgSrcs.map(async (src) => {
@@ -48,11 +47,10 @@ export async function run(): Promise<void> {
             throw new Error(`Failed to fetch image: ${src}`)
           }
           const buffer = await res.arrayBuffer()
-          return {src, buffer: Buffer.from(buffer)}
+          return { src, buffer: Buffer.from(buffer) }
         })
       )
 
-      let fileIds: string[] = []
       for (const image of imageBlobs) {
         // image.srcから拡張子を取得
         const path = new URL(image.src).pathname
@@ -88,33 +86,34 @@ export async function run(): Promise<void> {
         }
         fileIds.push(uploadUrlRes.file_id)
       }
+    }
 
-      // complete upload flow
+    // post message
+    const postRes = await slackClient.chat.postMessage({
+      channel: slackChannel,
+      blocks: createMessageBlocks(payload, fileIds)
+    })
+    if (!postRes.ok) {
+      throw new Error(`Slack API error: ${postRes.error}`)
+    }
+
+    // complete image upload flow
+    if (fileIds.length > 0) {
       if (fileIds.length > 0) {
         const completeRes = await slackClient.files.completeUploadExternal({
           files: [
-            {id: fileIds[0]},
-            ...fileIds.slice(1).map((id) => ({id}))
+            { id: fileIds[0] },
+            ...fileIds.slice(1).map((id) => ({ id }))
           ],
-          channel_id: slackChannel
+          channel_id: slackChannel,
+          thread_ts: postRes.ts
         })
         if (!completeRes.ok) {
           throw new Error(
             `Failed to complete file upload: ${completeRes.error}`
           )
         }
-        completeRes.files?.forEach((file) => {
-          if (file.url_private) imageUrls.push(file.url_private)
-        })
       }
-    }
-
-    const postRes = await slackClient.chat.postMessage({
-      channel: slackChannel,
-      blocks: createMessageBlocks(payload, imageUrls)
-    })
-    if (!postRes.ok) {
-      throw new Error(`Slack API error: ${postRes.error}`)
     }
   } catch (error: any) {
     core.setFailed(error.message)
@@ -123,7 +122,7 @@ export async function run(): Promise<void> {
 
 function createMessageBlocks(
   payload: (typeof github.context)['payload'],
-  imageUrls: string[] = []
+  fileIds: string[] = []
 ): (KnownBlock | Block)[] {
   let body = payload.comment?.body || ''
 
@@ -160,10 +159,10 @@ function createMessageBlocks(
         }
       ]
     },
-    ...imageUrls.map((url, i) => ({
+    ...fileIds.map((fileId, i) => ({
       type: 'image',
       slack_file: {
-        url
+        id: fileId
       },
       alt_text: `Uploaded image (${i + 1})`
     }))
