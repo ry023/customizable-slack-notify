@@ -31259,6 +31259,13 @@ async function run() {
         coreExports.info(`Comment: ${commentBody}`);
         coreExports.info(`Issue number: ${issueNumber}`);
         coreExports.info(`Sender: ${sender}`);
+        const oct = githubExports.getOctokit(coreExports.getInput('github-token'));
+        const comment = await oct.rest.issues.getComment({
+            owner: githubExports.context.repo.owner,
+            repo: githubExports.context.repo.repo,
+            comment_id: payload.comment.id
+        });
+        coreExports.info(`Comment fetched: ${comment.data.body_html}`);
     }
     catch (error) {
         coreExports.setFailed(error.message);
