@@ -122488,36 +122488,36 @@ async function run() {
         const slackToken = coreExports.getInput('slack-token');
         const slackChannel = coreExports.getInput('slack-channel');
         const slackClient = new distExports.WebClient(slackToken);
-        const postRes = await slackClient.chat.postMessage({
-            channel: slackChannel,
-            icon_emoji: ':github:',
-            blocks: [
-                {
-                    type: 'section',
-                    text: {
-                        type: 'mrkdwn',
-                        text: payload.comment.body || ''
-                    }
-                },
-                {
-                    type: 'context',
-                    elements: [
-                        {
-                            type: 'image',
-                            image_url: payload.sender?.avatar_url || '',
-                            alt_text: 'payload.sender.login'
-                        },
-                        {
-                            type: 'mrkdwn',
-                            text: `*${payload.sender?.login ?? 'unknown'}* : <${payload.issue?.html_url}|${payload.issue?.title} #${payload.issue?.number}>`
-                        }
-                    ]
-                }
-            ]
-        });
-        if (!postRes.ok) {
-            throw new Error(`Slack API error: ${postRes.error}`);
-        }
+        //const postRes = await slackClient.chat.postMessage({
+        //  channel: slackChannel,
+        //  icon_emoji: ':github:',
+        //  blocks: [
+        //    {
+        //      type: 'section',
+        //      text: {
+        //        type: 'mrkdwn',
+        //        text: payload.comment.body || ''
+        //      }
+        //    },
+        //    {
+        //      type: 'context',
+        //      elements: [
+        //        {
+        //          type: 'image',
+        //          image_url: payload.sender?.avatar_url || '',
+        //          alt_text: 'payload.sender.login'
+        //        },
+        //        {
+        //          type: 'mrkdwn',
+        //          text: `*${payload.sender?.login ?? 'unknown'}* : <${payload.issue?.html_url}|${payload.issue?.title} #${payload.issue?.number}>`
+        //        }
+        //      ]
+        //    }
+        //  ]
+        //})
+        //if (!postRes.ok) {
+        //  throw new Error(`Slack API error: ${postRes.error}`)
+        //}
         // Download private images from github and upload to slack
         const oct = githubExports.getOctokit(coreExports.getInput('github-token'));
         const comment = await oct.rest.issues.getComment({
@@ -122573,7 +122573,30 @@ async function run() {
             const completeRes = await slackClient.files.completeUploadExternal({
                 files: [{ id: fileIds[0] }, ...fileIds.slice(1).map((id) => ({ id }))],
                 channel_id: slackChannel,
-                thread_ts: postRes.ts
+                //thread_ts: postRes.ts
+                blocks: [
+                    {
+                        type: 'section',
+                        text: {
+                            type: 'mrkdwn',
+                            text: payload.comment.body || ''
+                        }
+                    },
+                    {
+                        type: 'context',
+                        elements: [
+                            {
+                                type: 'image',
+                                image_url: payload.sender?.avatar_url || '',
+                                alt_text: 'payload.sender.login'
+                            },
+                            {
+                                type: 'mrkdwn',
+                                text: `*${payload.sender?.login ?? 'unknown'}* : <${payload.issue?.html_url}|${payload.issue?.title} #${payload.issue?.number}>`
+                            }
+                        ]
+                    }
+                ]
             });
             if (!completeRes.ok) {
                 throw new Error(`Failed to complete file upload: ${completeRes.error}`);
