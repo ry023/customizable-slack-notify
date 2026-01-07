@@ -21,13 +21,38 @@ export async function run(): Promise<void> {
       return
     }
 
+    payload.sender
+
     const slackToken = core.getInput('slack-token')
     const slackChannel = core.getInput('slack-channel')
 
     const slackClient = new WebClient(slackToken)
     const postRes = await slackClient.chat.postMessage({
       channel: slackChannel,
-      text: payload.comment.body
+      icon_emoji: ':github:',
+      blocks: [
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: payload.comment.body || ''
+          }
+        },
+        {
+          type: 'context',
+          elements: [
+            {
+              type: 'image',
+              image_url: payload.sender?.avatar_url || '',
+              alt_text: 'cute cat'
+            },
+            {
+              type: 'mrkdwn',
+              text: `*${payload.sender?.username || 'unknown'}* : <https://example.com|Issueタイトル #999>`
+            }
+          ]
+        }
+      ]
     })
     if (!postRes.ok) {
       throw new Error(`Slack API error: ${postRes.error}`)

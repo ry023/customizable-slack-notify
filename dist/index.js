@@ -122484,12 +122484,36 @@ async function run() {
             coreExports.info('Comment body is empty. Nothing to post to Slack.');
             return;
         }
+        payload.sender;
         const slackToken = coreExports.getInput('slack-token');
         const slackChannel = coreExports.getInput('slack-channel');
         const slackClient = new distExports.WebClient(slackToken);
         const postRes = await slackClient.chat.postMessage({
             channel: slackChannel,
-            text: payload.comment.body
+            icon_emoji: ':github:',
+            blocks: [
+                {
+                    type: 'section',
+                    text: {
+                        type: 'mrkdwn',
+                        text: payload.comment.body || ''
+                    }
+                },
+                {
+                    type: 'context',
+                    elements: [
+                        {
+                            type: 'image',
+                            image_url: payload.sender?.avatar_url || '',
+                            alt_text: 'cute cat'
+                        },
+                        {
+                            type: 'mrkdwn',
+                            text: `*${payload.sender?.username || 'unknown'}* : <https://example.com|Issueタイトル #999>`
+                        }
+                    ]
+                }
+            ]
         });
         if (!postRes.ok) {
             throw new Error(`Slack API error: ${postRes.error}`);
