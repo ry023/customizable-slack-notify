@@ -45,7 +45,7 @@ export async function run(): Promise<void> {
     //  channel: slackChannel,
     //  text: `New comment on issue #${issueNumber} by ${sender}`
     //})
-    await fetch('https://slack.com/api/chat.postMessage', {
+    const res = await fetch('https://slack.com/api/chat.postMessage', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${slackToken}`,
@@ -56,6 +56,8 @@ export async function run(): Promise<void> {
         text: `test message: ${comment.data.body_html}`
       })
     })
+    core.info(`Slack response status: ${res.status}`)
+    core.info(`Slack response body: ${res.body}`)
   } catch (error) {
     core.setFailed((error as Error).message)
   }
