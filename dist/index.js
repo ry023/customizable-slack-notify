@@ -31264,7 +31264,10 @@ async function run() {
         const comment = await oct.rest.issues.getComment({
             owner: githubExports.context.repo.owner,
             repo: githubExports.context.repo.repo,
-            comment_id: payload.comment.id
+            comment_id: payload.comment.id,
+            headers: {
+                accept: 'application/vnd.github.html+json'
+            }
         });
         coreExports.info(`Comment body: ${comment.data.body}`);
         coreExports.info(`Comment body_html: ${comment.data.body_html}`);
