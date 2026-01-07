@@ -22,6 +22,7 @@ export async function run(): Promise<void> {
     core.info(`Comment: ${commentBody}`)
     core.info(`Issue number: ${issueNumber}`)
     core.info(`Sender: ${sender}`)
+    core.info(`Comment id: ${payload.comment.id}`)
 
     const oct = github.getOctokit(core.getInput('github-token'))
     const comment = await oct.rest.issues.getComment({
@@ -30,7 +31,8 @@ export async function run(): Promise<void> {
       comment_id: payload.comment.id
     })
 
-    core.info(`Comment fetched: ${comment.data.body_html}`)
+    core.info(`Comment body: ${comment.data.body}`)
+    core.info(`Comment body_html: ${comment.data.body_html}`)
   } catch (error) {
     core.setFailed((error as Error).message)
   }
