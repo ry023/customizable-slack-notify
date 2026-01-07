@@ -16,7 +16,7 @@ const config = {
   plugins: [
     typescript(),
     nodeResolve({ preferBuiltins: true }),
-    commonjs(),
+    commonjs({ transformMixedEsModules: true }),
     json()
   ]
 }
