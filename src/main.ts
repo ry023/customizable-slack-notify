@@ -125,7 +125,7 @@ function createMessageBlocks(
 
   // imgタグを`(image)`に置換
   const imgTagRegex = /<img [^>]*src="[^"]*"[^>]*>/g
-  body = body.replace(imgTagRegex, '(image)')
+  body = body.replace(imgTagRegex, '[スレッドに画像を表示]')
 
   return [
     {
