@@ -55,9 +55,17 @@ export async function run(): Promise<void> {
 
     let fileIds: string[] = []
     for (const image of imageBlobs) {
+      // image.srcから拡張子を取得
+      const path = new URL(image.src).pathname
+      const ext =
+        path
+          .substring(path.lastIndexOf('/') + 1)
+          .split('.')
+          .pop() || 'png'
+
       // start upload flow
       const uploadUrlRes = await slackClient.files.getUploadURLExternal({
-        filename: image.src.split('/').pop() || 'image',
+        filename: `${payload.comment.id}.${ext}`,
         length: image.buffer.length
       })
       if (
