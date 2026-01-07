@@ -1,5 +1,6 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
+import {WebClient} from '@slack/web-api'
 
 /**
  * The main function for the action.
@@ -28,37 +29,19 @@ export async function run(): Promise<void> {
     core.info(`Comment body: ${comment.data.body}`)
     core.info(`Comment body_html: ${comment.data.body_html}`)
 
+    const slackToken = core.getInput('slack-token')
+    const slackChannel = core.getInput('slack-channel')
 
+    const slackClient = new WebClient(slackToken)
+    const response = await slackClient.chat.postMessage({
+      channel: slackChannel,
+      text: `test message`
+    })
 
-    //const slackToken = core.getInput('slack-token')
-    //const slackChannel = core.getInput('slack-channel')
-
-    //const res = await fetch('https://slack.com/api/chat.postMessage', {
-    //  method: 'POST',
-    //  headers: {
-    //    Authorization: `Bearer ${slackToken}`,
-    //    'Content-Type': 'application/json; charset=utf-8'
-    //  },
-    //  body: JSON.stringify({
-    //    channel: slackChannel,
-    //    text: `test message: ${comment.data.body_html}`
-    //  })
-    //})
-    //core.info(`Slack response status: ${res.status}`)
-    //core.info(`Slack response body: ${await res.text()}`)
+    if (!response.ok) {
+      throw new Error(`Slack API error: ${response.error}`)
+    }
   } catch (error) {
     core.setFailed((error as Error).message)
   }
-}
-
-function extractImgSrc(html: string): string[] {
-  const imgSrcs: string[] = []
-  const imgTagRegex = /<img [^>]*src="([^"]+)"[^>]*>/g
-  let match: RegExpExecArray | null
-
-  while ((match = imgTagRegex.exec(html)) !== null) {
-    imgSrcs.push(match[1])
-  }
-
-  return imgSrcs
 }
