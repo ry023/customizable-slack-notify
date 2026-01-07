@@ -122603,11 +122603,12 @@ function createMessageBlocks(payload, imageUrls = []) {
                 }
             ]
         },
-        ...imageUrls.map((url) => ({
+        ...imageUrls.map((url, i) => ({
             type: 'image',
             slack_file: {
                 url
-            }
+            },
+            alt_text: `Uploaded image (${i + 1})`
         }))
     ];
 }
