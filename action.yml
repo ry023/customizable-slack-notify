@@ -12,6 +12,12 @@ inputs:
   github-token:
     description: Github token to get comment via REST API
     required: true
+  slack-token:
+    description: Slack token to post message to slack channel
+    required: true
+  slack-channel:
+    description: Slack channel to post message
+    required: true
 
 # Define your outputs here.
 outputs:
