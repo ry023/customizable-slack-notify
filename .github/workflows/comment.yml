@@ -15,3 +15,5 @@ jobs:
 
       - name: Post Comment
         uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}

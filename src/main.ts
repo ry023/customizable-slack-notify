@@ -22,6 +22,15 @@ export async function run(): Promise<void> {
     core.info(`Comment: ${commentBody}`)
     core.info(`Issue number: ${issueNumber}`)
     core.info(`Sender: ${sender}`)
+
+    const oct = github.getOctokit(core.getInput('github-token'))
+    const comment = await oct.rest.issues.getComment({
+      owner: github.context.repo.owner,
+      repo: github.context.repo.repo,
+      comment_id: payload.comment.id
+    })
+
+    core.info(`Comment fetched: ${comment.data.body_html}`)
   } catch (error) {
     core.setFailed((error as Error).message)
   }

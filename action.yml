@@ -9,10 +9,9 @@ branding:
 
 # Define your inputs here.
 inputs:
-  milliseconds:
-    description: Your input description here
+  github-token:
+    description: Github token to get comment via REST API
     required: true
-    default: '1000'
 
 # Define your outputs here.
 outputs:
