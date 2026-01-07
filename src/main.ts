@@ -15,15 +15,6 @@ export async function run(): Promise<void> {
       return
     }
 
-    const commentBody = payload.comment.body
-    const issueNumber = payload.issue?.number
-    const sender = payload.sender?.login
-
-    core.info(`Comment: ${commentBody}`)
-    core.info(`Issue number: ${issueNumber}`)
-    core.info(`Sender: ${sender}`)
-    core.info(`Comment id: ${payload.comment.id}`)
-
     const oct = github.getOctokit(core.getInput('github-token'))
     const comment = await oct.rest.issues.getComment({
       owner: github.context.repo.owner,
@@ -36,6 +27,8 @@ export async function run(): Promise<void> {
 
     core.info(`Comment body: ${comment.data.body}`)
     core.info(`Comment body_html: ${comment.data.body_html}`)
+
+
 
     //const slackToken = core.getInput('slack-token')
     //const slackChannel = core.getInput('slack-channel')
@@ -56,4 +49,16 @@ export async function run(): Promise<void> {
   } catch (error) {
     core.setFailed((error as Error).message)
   }
+}
+
+function extractImgSrc(html: string): string[] {
+  const imgSrcs: string[] = []
+  const imgTagRegex = /<img [^>]*src="([^"]+)"[^>]*>/g
+  let match: RegExpExecArray | null
+
+  while ((match = imgTagRegex.exec(html)) !== null) {
+    imgSrcs.push(match[1])
+  }
+
+  return imgSrcs
 }
