@@ -40,7 +40,7 @@ export async function run(): Promise<void> {
     // post message
     const postRes = await slackClient.chat.postMessage({
       channel: slackChannel,
-      blocks: createMessageBlocks(payload)
+      ...createMessageBlocks(payload)
     })
     if (!postRes.ok) {
       throw new Error(`Slack API error: ${postRes.error}`)
@@ -120,41 +120,49 @@ export async function run(): Promise<void> {
 
 function createMessageBlocks(
   payload: (typeof github.context)['payload']
-): (KnownBlock | Block)[] {
+): {blocks: (KnownBlock | Block)[], attachments: {blocks: (KnownBlock | Block)[]}[]} {
   let body = payload.comment?.body || ''
 
   // imgタグを`(image)`に置換
   const imgTagRegex = /<img [^>]*src="[^"]*"[^>]*>/g
   body = body.replace(imgTagRegex, '[スレッドに画像を表示]')
 
-  return [
-    {
-      type: 'context',
-      elements: [
-        {
-          type: 'image',
-          image_url: payload.sender?.avatar_url || '',
-          alt_text: 'payload.sender.login'
-        },
-        {
-          type: 'mrkdwn',
-          text: `*${payload.sender?.login ?? 'unknown'}* : <${payload.issue?.html_url}|${payload.issue?.title} #${payload.issue?.number}>`
-        }
-      ]
-    },
-    {
-      type: 'rich_text',
-      elements: [
-        {
-          type: 'rich_text_quote',
-          elements: [
-            {
-              type: 'text',
-              text: body
-            }
-          ]
-        }
-      ]
-    }
-  ]
+  return {
+    blocks: [
+      {
+        type: 'context',
+        elements: [
+          {
+            type: 'image',
+            image_url: payload.sender?.avatar_url || '',
+            alt_text: 'payload.sender.login'
+          },
+          {
+            type: 'mrkdwn',
+            text: `*${payload.sender?.login ?? 'unknown'}* : <${payload.issue?.html_url}|${payload.issue?.title} #${payload.issue?.number}>`
+          }
+        ]
+      },
+    ],
+    attachments: [
+      {
+        blocks: [
+          {
+            type: 'rich_text',
+            elements: [
+              {
+                type: 'rich_text_quote',
+                elements: [
+                  {
+                    type: 'text',
+                    text: body
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
 }
