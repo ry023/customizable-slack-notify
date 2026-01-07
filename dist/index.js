@@ -31291,7 +31291,7 @@ async function run() {
             })
         });
         coreExports.info(`Slack response status: ${res.status}`);
-        coreExports.info(`Slack response body: ${await res.json()}`);
+        coreExports.info(`Slack response body: ${await res.text()}`);
     }
     catch (error) {
         coreExports.setFailed(error.message);
