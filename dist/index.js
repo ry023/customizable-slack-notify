@@ -122591,20 +122591,14 @@ function createMessageBlocks(payload) {
         ],
         attachments: [
             {
+                color: '#36a64f',
                 blocks: [
                     {
-                        type: 'rich_text',
-                        elements: [
-                            {
-                                type: 'rich_text_quote',
-                                elements: [
-                                    {
-                                        type: 'text',
-                                        text: body
-                                    }
-                                ]
-                            }
-                        ]
+                        type: 'section',
+                        text: {
+                            type: 'mrkdwn',
+                            text: body
+                        }
                     }
                 ]
             }
