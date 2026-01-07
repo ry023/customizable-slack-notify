@@ -7,7 +7,7 @@ export const context = {
       owner: 'example',
       repo: 'example'
     }
-  },
+  }
 }
 
 export const getComment = jest.fn()
