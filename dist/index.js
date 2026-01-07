@@ -122480,12 +122480,16 @@ async function run() {
             coreExports.info('This event does not contain a comment.');
             return;
         }
+        if (!payload.comment.body || payload.comment.body.trim() === '') {
+            coreExports.info('Comment body is empty. Nothing to post to Slack.');
+            return;
+        }
         const slackToken = coreExports.getInput('slack-token');
         const slackChannel = coreExports.getInput('slack-channel');
         const slackClient = new distExports.WebClient(slackToken);
         const postRes = await slackClient.chat.postMessage({
             channel: slackChannel,
-            text: `test message`
+            text: payload.comment.body
         });
         if (!postRes.ok) {
             throw new Error(`Slack API error: ${postRes.error}`);

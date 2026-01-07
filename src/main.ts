@@ -16,6 +16,10 @@ export async function run(): Promise<void> {
       core.info('This event does not contain a comment.')
       return
     }
+    if (!payload.comment.body || payload.comment.body.trim() === '') {
+      core.info('Comment body is empty. Nothing to post to Slack.')
+      return
+    }
 
     const slackToken = core.getInput('slack-token')
     const slackChannel = core.getInput('slack-channel')
@@ -23,7 +27,7 @@ export async function run(): Promise<void> {
     const slackClient = new WebClient(slackToken)
     const postRes = await slackClient.chat.postMessage({
       channel: slackChannel,
-      text: `test message`
+      text: payload.comment.body
     })
     if (!postRes.ok) {
       throw new Error(`Slack API error: ${postRes.error}`)
