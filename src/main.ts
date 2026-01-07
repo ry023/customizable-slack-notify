@@ -1,7 +1,7 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
-import { KnownBlock, Block, WebClient } from '@slack/web-api'
-import { extractImgSrc } from './extract.js'
+import {KnownBlock, Block, WebClient} from '@slack/web-api'
+import {extractImgSrc} from './extract.js'
 
 /**
  * The main function for the action.
@@ -59,7 +59,7 @@ export async function run(): Promise<void> {
             throw new Error(`Failed to fetch image: ${src}`)
           }
           const buffer = await res.arrayBuffer()
-          return { src, buffer: Buffer.from(buffer) }
+          return {src, buffer: Buffer.from(buffer)}
         })
       )
 
@@ -104,8 +104,8 @@ export async function run(): Promise<void> {
       if (fileIds.length > 0) {
         const completeRes = await slackClient.files.completeUploadExternal({
           files: [
-            { id: fileIds[0] },
-            ...fileIds.slice(1).map((id) => ({ id }))
+            {id: fileIds[0]},
+            ...fileIds.slice(1).map((id) => ({id}))
           ],
           channel_id: slackChannel,
           blocks: createMessageBlocks(payload)
@@ -150,7 +150,7 @@ function createMessageBlocks(
       type: 'section',
       text: {
         type: 'mrkdwn',
-        text: payload.comment?.body || ''
+        text: body
       }
     }
   ]
