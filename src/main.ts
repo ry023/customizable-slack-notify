@@ -1,8 +1,8 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
-import { KnownBlock, Block, WebClient } from '@slack/web-api'
-import { extractImgSrc } from './extract.js'
-import { slackifyMarkdown } from 'slackify-markdown'
+import {KnownBlock, Block, WebClient} from '@slack/web-api'
+import {extractImgSrc} from './extract.js'
+import {slackifyMarkdown} from 'slackify-markdown'
 
 /**
  * The main function for the action.
@@ -12,6 +12,9 @@ import { slackifyMarkdown } from 'slackify-markdown'
 export async function run(): Promise<void> {
   try {
     const payload = github.context.payload
+
+    if (github.context.eventName !== 'issue_comment') {
+    }
 
     if (!payload.comment) {
       core.info('This event does not contain a comment.')
@@ -27,6 +30,21 @@ export async function run(): Promise<void> {
 
     const slackClient = new WebClient(slackToken)
 
+    // post message
+    const postRes = await slackClient.chat.postMessage({
+      channel: slackChannel,
+      blocks: createMessageHeader(payload),
+      attachments: [
+        {
+          color: 'good',
+          blocks: createMessageBody(payload)
+        }
+      ]
+    })
+    if (!postRes.ok) {
+      throw new Error(`Slack API error: ${postRes.error}`)
+    }
+
     // Download private images from github and upload to slack
     const oct = github.getOctokit(core.getInput('github-token'))
     const comment = await oct.rest.issues.getComment({
@@ -38,15 +56,6 @@ export async function run(): Promise<void> {
       }
     })
 
-    // post message
-    const postRes = await slackClient.chat.postMessage({
-      channel: slackChannel,
-      ...createMessageBlocks(payload)
-    })
-    if (!postRes.ok) {
-      throw new Error(`Slack API error: ${postRes.error}`)
-    }
-
     const imgSrcs = extractImgSrc(comment.data.body_html || '')
     if (imgSrcs.length > 0) {
       const imageBlobs = await Promise.all(
@@ -56,7 +65,7 @@ export async function run(): Promise<void> {
             throw new Error(`Failed to fetch image: ${src}`)
           }
           const buffer = await res.arrayBuffer()
-          return { src, buffer: Buffer.from(buffer) }
+          return {src, buffer: Buffer.from(buffer)}
         })
       )
 
@@ -101,8 +110,8 @@ export async function run(): Promise<void> {
       if (fileIds.length > 0) {
         const completeRes = await slackClient.files.completeUploadExternal({
           files: [
-            { id: fileIds[0] },
-            ...fileIds.slice(1).map((id) => ({ id }))
+            {id: fileIds[0]},
+            ...fileIds.slice(1).map((id) => ({id}))
           ],
           channel_id: slackChannel,
           thread_ts: postRes.ts
@@ -119,10 +128,26 @@ export async function run(): Promise<void> {
   }
 }
 
-function createMessageBlocks(payload: (typeof github.context)['payload']): {
-  blocks: (KnownBlock | Block)[]
-  attachments: { color: string; blocks: (KnownBlock | Block)[] }[]
-} {
+function createMessageHeader(payload: (typeof github.context)['payload']): (KnownBlock | Block)[] {
+  return [
+    {
+      type: 'context',
+      elements: [
+        {
+          type: 'image',
+          image_url: payload.sender?.avatar_url || '',
+          alt_text: 'payload.sender.login'
+        },
+        {
+          type: 'mrkdwn',
+          text: `*${payload.sender?.login ?? 'unknown'}* : <${payload.issue?.html_url}|${payload.issue?.title} #${payload.issue?.number}>`
+        }
+      ]
+    }
+  ]
+}
+
+function createMessageBody(payload: (typeof github.context)['payload']): (KnownBlock | Block)[] {
   let body = payload.comment?.body || ''
 
   // imgタグを`(image)`に置換
@@ -130,36 +155,13 @@ function createMessageBlocks(payload: (typeof github.context)['payload']): {
   body = body.replace(imgTagRegex, '[スレッドに画像を表示]')
   body = slackifyMarkdown(body)
 
-  return {
-    blocks: [
-      {
-        type: 'context',
-        elements: [
-          {
-            type: 'image',
-            image_url: payload.sender?.avatar_url || '',
-            alt_text: 'payload.sender.login'
-          },
-          {
-            type: 'mrkdwn',
-            text: `*${payload.sender?.login ?? 'unknown'}* : <${payload.issue?.html_url}|${payload.issue?.title} #${payload.issue?.number}>`
-          }
-        ]
+  return [
+    {
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: body
       }
-    ],
-    attachments: [
-      {
-        color: '#36a64f',
-        blocks: [
-          {
-            type: 'section',
-            text: {
-              type: 'mrkdwn',
-              text: body
-            }
-          }
-        ]
-      }
-    ]
-  }
+    }
+  ]
 }
