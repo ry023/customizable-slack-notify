@@ -45,23 +45,26 @@ export async function run(): Promise<void> {
       let imageUrls: string[] = []
       let color = '#36a64f' // green
 
-      if (github.context.payload.action === 'opened') {
-        if (!payload.issue) return
-        rawBody = payload.issue.body ?? ''
+      if (!payload.issue) return
+      rawBody = payload.issue.body ?? ''
 
-        // get private image urls from github and upload to slack
-        const issue = await oct.rest.issues.get({
-          owner: github.context.repo.owner,
-          repo: github.context.repo.repo,
-          issue_number: payload.issue.number,
-          headers: {
-            accept: 'application/vnd.github.html+json'
-          }
-        })
-        imageUrls = extractImgSrc(issue.data.body_html || '')
+      // get private image urls from github and upload to slack
+      const issue = await oct.rest.issues.get({
+        owner: github.context.repo.owner,
+        repo: github.context.repo.repo,
+        issue_number: payload.issue.number,
+        headers: {
+          accept: 'application/vnd.github.html+json'
+        }
+      })
+      imageUrls = extractImgSrc(issue.data.body_html || '')
+
+      if (github.context.payload.action === 'opened') {
         color = '#36a64f' // green
       } else if (github.context.payload.action === 'closed') {
-        rawBody = `:white_check_mark: This issue has been closed.`
+        if (rawBody === '') {
+          rawBody = `:white_check_mark: This issue has been closed.`
+        }
         color = '#808080'
       }
 
