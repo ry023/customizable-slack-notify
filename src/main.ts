@@ -43,7 +43,7 @@ export async function run(): Promise<void> {
     } else if (github.context.eventName === 'issues') {
       let rawBody = ''
       let imageUrls: string[] = []
-      let color = 'good'
+      let color = '#36a64f' // green
 
       if (github.context.payload.action === 'opened') {
         if (!payload.issue) return
@@ -59,6 +59,7 @@ export async function run(): Promise<void> {
           }
         })
         imageUrls = extractImgSrc(issue.data.body_html || '')
+        color = '#36a64f' // green
       } else if (github.context.payload.action === 'closed') {
         rawBody = `:white_check_mark: This issue has been closed.`
         color = '#808080'
