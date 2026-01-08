@@ -2,6 +2,7 @@ import * as core from '@actions/core'
 import * as github from '@actions/github'
 import { KnownBlock, Block, WebClient } from '@slack/web-api'
 import { extractImgSrc } from './extract.js'
+import { slackifyMarkdown } from 'slackify-markdown'
 
 /**
  * The main function for the action.
@@ -127,6 +128,7 @@ function createMessageBlocks(payload: (typeof github.context)['payload']): {
   // imgタグを`(image)`に置換
   const imgTagRegex = /<img [^>]*src="[^"]*"[^>]*>/g
   body = body.replace(imgTagRegex, '[スレッドに画像を表示]')
+  body = slackifyMarkdown(body)
 
   return {
     blocks: [
