@@ -13,9 +13,6 @@ export async function run(): Promise<void> {
   try {
     const payload = github.context.payload
 
-    if (github.context.eventName !== 'issue_comment') {
-    }
-
     if (!payload.comment) {
       core.info('This event does not contain a comment.')
       return
@@ -23,26 +20,6 @@ export async function run(): Promise<void> {
     if (!payload.comment.body || payload.comment.body.trim() === '') {
       core.info('Comment body is empty. Nothing to post to Slack.')
       return
-    }
-
-    const slackToken = core.getInput('slack-token')
-    const slackChannel = core.getInput('slack-channel')
-
-    const slackClient = new WebClient(slackToken)
-
-    // post message
-    const postRes = await slackClient.chat.postMessage({
-      channel: slackChannel,
-      blocks: createMessageHeader(payload),
-      attachments: [
-        {
-          color: 'good',
-          blocks: createMessageBody(payload)
-        }
-      ]
-    })
-    if (!postRes.ok) {
-      throw new Error(`Slack API error: ${postRes.error}`)
     }
 
     // Download private images from github and upload to slack
@@ -56,80 +33,130 @@ export async function run(): Promise<void> {
       }
     })
 
-    const imgSrcs = extractImgSrc(comment.data.body_html || '')
-    if (imgSrcs.length > 0) {
-      const imageBlobs = await Promise.all(
-        imgSrcs.map(async (src) => {
-          const res = await fetch(src)
-          if (!res.ok) {
-            throw new Error(`Failed to fetch image: ${src}`)
-          }
-          const buffer = await res.arrayBuffer()
-          return {src, buffer: Buffer.from(buffer)}
-        })
-      )
-
-      let fileIds: string[] = []
-      for (const image of imageBlobs) {
-        // image.srcから拡張子を取得
-        const path = new URL(image.src).pathname
-        const ext =
-          path
-            .substring(path.lastIndexOf('/') + 1)
-            .split('.')
-            .pop() || 'png'
-
-        // start upload flow
-        const uploadUrlRes = await slackClient.files.getUploadURLExternal({
-          filename: `${payload.comment.id}.${ext}`,
-          length: image.buffer.length
-        })
-        if (
-          !uploadUrlRes.ok ||
-          !uploadUrlRes.upload_url ||
-          !uploadUrlRes.file_id
-        ) {
-          throw new Error(`Failed to get upload URL for image: ${image.src}`)
-        }
-
-        // upload image
-        const uploadRes = await fetch(uploadUrlRes.upload_url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/octet-stream'
-          },
-          body: image.buffer
-        })
-        if (!uploadRes.ok) {
-          throw new Error(`Failed to upload image to Slack: ${image.src}`)
-        }
-        fileIds.push(uploadUrlRes.file_id)
+    await notify({
+      rawBody: comment.data.body ?? '',
+      imageUrls: extractImgSrc(comment.data.body_html || ''),
+      headerProps: {
+        sender: {login: payload.sender?.lobin ?? 'unknown', avatar_url: payload.sender?.avatar_url || ''},
+        url:
+          payload.issue?.html_url ??
+          payload.pull_request?.html_url ??
+          '',
+        title: payload.issue?.title ?? payload.pull_request?.title ?? 'unknown title',
+        issue_number:
+          payload.issue?.number ?? payload.pull_request?.number ?? 0
       }
-
-      // complete image upload flow
-      if (fileIds.length > 0) {
-        const completeRes = await slackClient.files.completeUploadExternal({
-          files: [
-            {id: fileIds[0]},
-            ...fileIds.slice(1).map((id) => ({id}))
-          ],
-          channel_id: slackChannel,
-          thread_ts: postRes.ts
-        })
-        if (!completeRes.ok) {
-          throw new Error(
-            `Failed to complete file upload: ${completeRes.error}`
-          )
-        }
-      }
-    }
+    })
   } catch (error: any) {
     core.setFailed(error.message)
   }
 }
 
-function createMessageHeader(payload: (typeof github.context)['payload']): (KnownBlock | Block)[] {
-  const url = payload.comment?.html_url || payload.issue?.html_url
+type notifyProps = {
+  rawBody: string
+  imageUrls: string[]
+  headerProps: createMessageHeaderProps
+}
+
+async function notify(props: notifyProps): Promise<void> {
+  const slackToken = core.getInput('slack-token')
+  const slackChannel = core.getInput('slack-channel')
+  const slackClient = new WebClient(slackToken)
+
+  // post message
+  const postRes = await slackClient.chat.postMessage({
+    channel: slackChannel,
+    blocks: createMessageHeader(props.headerProps),
+    attachments: [
+      {
+        color: 'good',
+        blocks: createMessageBody(props.rawBody)
+      }
+    ]
+  })
+  if (!postRes.ok) {
+    throw new Error(`Slack API error: ${postRes.error}`)
+  }
+
+  if (props.imageUrls.length > 0) {
+    const imageBlobs = await Promise.all(
+      props.imageUrls.map(async (src) => {
+        const res = await fetch(src)
+        if (!res.ok) {
+          throw new Error(`Failed to fetch image: ${src}`)
+        }
+        const buffer = await res.arrayBuffer()
+        return {src, buffer: Buffer.from(buffer)}
+      })
+    )
+
+    let fileIds: string[] = []
+    for (const image of imageBlobs) {
+      // image.srcから拡張子を取得
+      const path = new URL(image.src).pathname
+      const ext =
+        path
+          .substring(path.lastIndexOf('/') + 1)
+          .split('.')
+          .pop() || 'png'
+
+      // start upload flow
+      const uploadUrlRes = await slackClient.files.getUploadURLExternal({
+        filename: `image.${ext}`,
+        length: image.buffer.length
+      })
+      if (
+        !uploadUrlRes.ok ||
+        !uploadUrlRes.upload_url ||
+        !uploadUrlRes.file_id
+      ) {
+        throw new Error(`Failed to get upload URL for image: ${image.src}`)
+      }
+
+      // upload image
+      const uploadRes = await fetch(uploadUrlRes.upload_url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/octet-stream'
+        },
+        body: image.buffer
+      })
+      if (!uploadRes.ok) {
+        throw new Error(`Failed to upload image to Slack: ${image.src}`)
+      }
+      fileIds.push(uploadUrlRes.file_id)
+    }
+
+    // complete image upload flow
+    if (fileIds.length > 0) {
+      const completeRes = await slackClient.files.completeUploadExternal({
+        files: [
+          {id: fileIds[0]},
+          ...fileIds.slice(1).map((id) => ({id}))
+        ],
+        channel_id: slackChannel,
+        thread_ts: postRes.ts
+      })
+      if (!completeRes.ok) {
+        throw new Error(
+          `Failed to complete file upload: ${completeRes.error}`
+        )
+      }
+    }
+  }
+}
+
+type createMessageHeaderProps = {
+  sender: {
+    login: string
+    avatar_url: string
+  }
+  url: string
+  title: string
+  issue_number: number
+}
+
+function createMessageHeader(payload: createMessageHeaderProps): (KnownBlock | Block)[] {
   return [
     {
       type: 'context',
@@ -141,19 +168,18 @@ function createMessageHeader(payload: (typeof github.context)['payload']): (Know
         },
         {
           type: 'mrkdwn',
-          text: `*${payload.sender?.login ?? 'unknown'}* : <${url}|${payload.issue?.title} #${payload.issue?.number}>`
+          text: `*${payload.sender?.login ?? 'unknown'}* : <${payload.url}|${payload.title} #${payload.issue_number}>`
         }
       ]
     }
   ]
 }
 
-function createMessageBody(payload: (typeof github.context)['payload']): (KnownBlock | Block)[] {
-  let body = payload.comment?.body || ''
-
+function createMessageBody(rawBody: string): (KnownBlock | Block)[] {
   // imgタグを`(image)`に置換
   const imgTagRegex = /<img [^>]*src="[^"]*"[^>]*>/g
-  body = body.replace(imgTagRegex, '[スレッドに画像を表示]')
+  let body = rawBody.replace(imgTagRegex, '[スレッドに画像を表示]')
+  // markdownをslack形式に変換
   body = slackifyMarkdown(body)
 
   return [
