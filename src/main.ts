@@ -129,6 +129,7 @@ export async function run(): Promise<void> {
 }
 
 function createMessageHeader(payload: (typeof github.context)['payload']): (KnownBlock | Block)[] {
+  const url = payload.comment?.html_url || payload.issue?.html_url
   return [
     {
       type: 'context',
@@ -140,7 +141,7 @@ function createMessageHeader(payload: (typeof github.context)['payload']): (Know
         },
         {
           type: 'mrkdwn',
-          text: `*${payload.sender?.login ?? 'unknown'}* : <${payload.issue?.html_url}|${payload.issue?.title} #${payload.issue?.number}>`
+          text: `*${payload.sender?.login ?? 'unknown'}* : <${url}|${payload.issue?.title} #${payload.issue?.number}>`
         }
       ]
     }
