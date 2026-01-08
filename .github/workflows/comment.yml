@@ -3,6 +3,8 @@ name: Comment Action
 on:
   issue_comment:
     types: [created]
+  issues:
+    types: [opened, closed]
 
 permissions:
   contents: read
