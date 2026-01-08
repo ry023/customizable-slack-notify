@@ -12,41 +12,70 @@ import {slackifyMarkdown} from 'slackify-markdown'
 export async function run(): Promise<void> {
   try {
     const payload = github.context.payload
-
-    if (!payload.comment) {
-      core.info('This event does not contain a comment.')
-      return
-    }
-    if (!payload.comment.body || payload.comment.body.trim() === '') {
-      core.info('Comment body is empty. Nothing to post to Slack.')
-      return
-    }
-
-    // Download private images from github and upload to slack
     const oct = github.getOctokit(core.getInput('github-token'))
-    const comment = await oct.rest.issues.getComment({
-      owner: github.context.repo.owner,
-      repo: github.context.repo.repo,
-      comment_id: payload.comment.id,
-      headers: {
-        accept: 'application/vnd.github.html+json'
-      }
-    })
 
-    await notify({
-      rawBody: comment.data.body ?? '',
-      imageUrls: extractImgSrc(comment.data.body_html || ''),
-      headerProps: {
-        sender: {login: payload.sender?.lobin ?? 'unknown', avatar_url: payload.sender?.avatar_url || ''},
-        url:
-          payload.issue?.html_url ??
-          payload.pull_request?.html_url ??
-          '',
-        title: payload.issue?.title ?? payload.pull_request?.title ?? 'unknown title',
-        issue_number:
-          payload.issue?.number ?? payload.pull_request?.number ?? 0
+    const sender = {login: payload.sender?.login ?? 'unknown', avatar_url: payload.sender?.avatar_url || ''}
+
+    if (github.context.eventName === 'issue_comment') {
+      if (!payload.comment) return
+
+      // get private image urls from github and upload to slack
+      const comment = await oct.rest.issues.getComment({
+        owner: github.context.repo.owner,
+        repo: github.context.repo.repo,
+        comment_id: payload.comment.id,
+        headers: {
+          accept: 'application/vnd.github.html+json'
+        }
+      })
+
+      await notify({
+        rawBody: comment.data.body ?? '',
+        imageUrls: extractImgSrc(comment.data.body_html || ''),
+        color: '#808080',
+        headerProps: {
+          sender,
+          url: payload.issue?.html_url ?? '',
+          title: payload.issue?.title ?? '',
+          number: payload.issue?.number ?? 0
+        }
+      })
+    } else if (github.context.eventName === 'issues') {
+      let rawBody = ''
+      let imageUrls: string[] = []
+      let color = 'good'
+
+      if (github.context.payload.action === 'opened') {
+        if (!payload.issue) return
+        rawBody = payload.issue.body ?? ''
+
+        // get private image urls from github and upload to slack
+        const issue = await oct.rest.issues.get({
+          owner: github.context.repo.owner,
+          repo: github.context.repo.repo,
+          issue_number: payload.issue.number,
+          headers: {
+            accept: 'application/vnd.github.html+json'
+          }
+        })
+        imageUrls = extractImgSrc(issue.data.body_html || '')
+      } else if (github.context.payload.action === 'closed') {
+        rawBody = `:white_check_mark: This issue has been closed.`
+        color = '#808080'
       }
-    })
+
+      await notify({
+        color,
+        rawBody,
+        imageUrls,
+        headerProps: {
+          sender,
+          url: payload.issue?.html_url ?? '',
+          title: payload.issue?.title ?? '',
+          number: payload.issue?.number ?? 0
+        }
+      })
+    }
   } catch (error: any) {
     core.setFailed(error.message)
   }
@@ -55,6 +84,7 @@ export async function run(): Promise<void> {
 type notifyProps = {
   rawBody: string
   imageUrls: string[]
+  color: string
   headerProps: createMessageHeaderProps
 }
 
@@ -69,7 +99,7 @@ async function notify(props: notifyProps): Promise<void> {
     blocks: createMessageHeader(props.headerProps),
     attachments: [
       {
-        color: 'good',
+        color: props.color,
         blocks: createMessageBody(props.rawBody)
       }
     ]
@@ -153,7 +183,7 @@ type createMessageHeaderProps = {
   }
   url: string
   title: string
-  issue_number: number
+  number: number
 }
 
 function createMessageHeader(payload: createMessageHeaderProps): (KnownBlock | Block)[] {
@@ -168,7 +198,7 @@ function createMessageHeader(payload: createMessageHeaderProps): (KnownBlock | B
         },
         {
           type: 'mrkdwn',
-          text: `*${payload.sender?.login ?? 'unknown'}* : <${payload.url}|${payload.title} #${payload.issue_number}>`
+          text: `*${payload.sender?.login ?? 'unknown'}* : <${payload.url}|${payload.title} #${payload.number}>`
         }
       ]
     }
