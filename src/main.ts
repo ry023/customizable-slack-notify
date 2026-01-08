@@ -17,7 +17,11 @@ export async function run(): Promise<void> {
 
     const sender = {login: payload.sender?.login ?? 'unknown', avatar_url: payload.sender?.avatar_url || ''}
 
-    if (!payload.issue) return
+    if (!payload.issue?.body) {
+      core.error('No issue body found in the payload.')
+      return
+    }
+
     let metadata = await loadMetadata({
       owner: github.context.repo.owner,
       repo: github.context.repo.repo,
@@ -58,6 +62,7 @@ export async function run(): Promise<void> {
         )
 
         await saveMetadata({
+          rawBody: payload.issue.body,
           owner: github.context.repo.owner,
           repo: github.context.repo.repo,
           issueNumber: payload.issue.number,
@@ -113,6 +118,7 @@ export async function run(): Promise<void> {
 
     if (metadata) {
       await saveMetadata({
+        rawBody: payload.issue.body || '',
         owner: github.context.repo.owner,
         repo: github.context.repo.repo,
         issueNumber: payload.issue.number,

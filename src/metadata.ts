@@ -1,4 +1,5 @@
 import * as github from '@actions/github'
+import * as core from '@actions/core'
 
 export type Notification = {
   ts?: string
@@ -62,7 +63,7 @@ function parseMetadata(rawBody: string): Metadata | undefined {
       const metadata: Metadata = JSON.parse(match[1])
       return metadata
     } catch (error) {
-      console.warn('Failed to parse metadata JSON:', error)
+      core.warning('Failed to parse metadata JSON')
       return undefined
     }
   }
@@ -72,6 +73,7 @@ type saveMetadataProps = {
   owner: string
   repo: string
   issueNumber: number
+  rawBody: string
   metadata: Metadata
   octkit: ReturnType<typeof github.getOctokit>
 }
@@ -80,19 +82,7 @@ type saveMetadataProps = {
 export async function saveMetadata(
   props: saveMetadataProps
 ): Promise<void> {
-  const {owner, repo, issueNumber, metadata, octkit} = props
-
-  // 現在のissue bodyを取得
-  const {data: issue} = await octkit.rest.issues.get({
-    owner,
-    repo,
-    issue_number: issueNumber,
-    headers: {
-      accept: 'application/vnd.github.html+json'
-    }
-  })
-
-  const rawBody = issue.body || ''
+  const {owner, repo, issueNumber, metadata, octkit, rawBody} = props
 
   // metadataを埋め込む
   const newBody = embedMetadata(rawBody, metadata)
