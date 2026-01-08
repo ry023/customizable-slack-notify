@@ -1,12 +1,45 @@
+import * as github from '@actions/github'
+
+type Notification = {
+  thread_ts?: string
+  channel_id?: string
+}
+
 type Metadata = {
   version: number
-  issue_notify: {
-    thread_ts?: string
-    channel_id?: string
+  issue_notification: Notification
+  comment_notifications: {
+    [commentId: string]: Notification
   }
 }
 
-export function parseMetadata(rawBody: string): Metadata | undefined {
+type loadMetadataProps = {
+  owner: string
+  repo: string
+  issueNumber: number
+  octkit: ReturnType<typeof github.getOctokit>
+}
+
+export async function loadMetadata(props: loadMetadataProps): Promise<Metadata | undefined> {
+  const {owner, repo, issueNumber, octkit} = props
+
+  // issue bodyを取得
+  const {data: issue} = await octkit.rest.issues.get({
+    owner,
+    repo,
+    issue_number: issueNumber,
+    headers: {
+      accept: 'application/vnd.github.html+json'
+    }
+  })
+
+  const rawBody = issue.body || ''
+
+  // metadataを抽出
+  return parseMetadata(rawBody)
+}
+
+function parseMetadata(rawBody: string): Metadata | undefined {
   // <!-- customizable-slack-notify --> で囲まれたJSONを抽出
   const metadataRegex = /<!--\s*customizable-slack-notify\s*([\s\S]*?)\s*-->/g
   const match = metadataRegex.exec(rawBody)
@@ -21,7 +54,45 @@ export function parseMetadata(rawBody: string): Metadata | undefined {
   }
 }
 
-export function embedMetadata(rawBody: string, metadata: Metadata): string {
+type saveMetadataProps = {
+  owner: string
+  repo: string
+  issueNumber: number
+  metadata: Metadata
+  octkit: ReturnType<typeof github.getOctokit>
+}
+
+
+export async function saveMetadata(
+  props: saveMetadataProps
+): Promise<void> {
+  const {owner, repo, issueNumber, metadata, octkit} = props
+
+  // 現在のissue bodyを取得
+  const {data: issue} = await octkit.rest.issues.get({
+    owner,
+    repo,
+    issue_number: issueNumber,
+    headers: {
+      accept: 'application/vnd.github.html+json'
+    }
+  })
+
+  const rawBody = issue.body || ''
+
+  // metadataを埋め込む
+  const newBody = embedMetadata(rawBody, metadata)
+
+  // issue bodyを更新
+  await octkit.rest.issues.update({
+    owner,
+    repo,
+    issue_number: issueNumber,
+    body: newBody
+  })
+}
+
+function embedMetadata(rawBody: string, metadata: Metadata): string {
   const metadataComment = `<!-- customizable-slack-notify\n${JSON.stringify(metadata, null, 2)}\n-->`
 
   // 既存のmetadataを置換、なければ末尾に追加
