@@ -30,7 +30,7 @@ export async function run(): Promise<void> {
       })
 
       await notify({
-        rawBody: comment.data.body ?? '',
+        rawBody: payload.comment.body ?? '',
         imageUrls: extractImgSrc(comment.data.body_html || ''),
         color: '#808080',
         headerProps: {
@@ -198,7 +198,7 @@ function createMessageHeader(payload: createMessageHeaderProps): (KnownBlock | B
         },
         {
           type: 'mrkdwn',
-          text: `*${payload.sender?.login ?? 'unknown'}* : <${payload.url}|${payload.title} #${payload.number}>`
+          text: `*${payload.sender.login ?? 'unknown'}* : <${payload.url}|${payload.title} #${payload.number}>`
         }
       ]
     }
@@ -217,7 +217,7 @@ function createMessageBody(rawBody: string): (KnownBlock | Block)[] {
       type: 'section',
       text: {
         type: 'mrkdwn',
-        text: body
+        text: body !== '' ? body : 'EMPTY COMMENT'
       }
     }
   ]
