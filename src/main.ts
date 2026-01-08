@@ -129,6 +129,7 @@ type notifyProps = {
   rawBody: string
   imageUrls: string[]
   color: string
+  thread_ts?: string
   headerProps: createMessageHeaderProps
 }
 
@@ -145,6 +146,7 @@ async function notify(props: notifyProps): Promise<notifyResult> {
   // post message
   const postRes = await slackClient.chat.postMessage({
     channel: slackChannel,
+    thread_ts: props.thread_ts,
     blocks: createMessageHeader(props.headerProps),
     attachments: [
       {
@@ -215,7 +217,7 @@ async function notify(props: notifyProps): Promise<notifyResult> {
         ],
         channel_id: slackChannel,
         blocks: createMessageHeader(props.headerProps),
-        thread_ts: postRes.ts
+        thread_ts: props.thread_ts ?? postRes.ts
       })
       if (!completeRes.ok) {
         throw new Error(
