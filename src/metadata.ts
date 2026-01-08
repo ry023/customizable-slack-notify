@@ -1,12 +1,12 @@
 import * as github from '@actions/github'
 
-type Notification = {
-  thread_ts?: string
+export type Notification = {
+  ts?: string
   channel_id?: string
 }
 
-type Metadata = {
-  version: number
+export type Metadata = {
+  version: string
   issue_notification: Notification
   comment_notifications: {
     [commentId: string]: Notification

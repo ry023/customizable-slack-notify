@@ -3,6 +3,7 @@ import * as github from '@actions/github'
 import {KnownBlock, Block, WebClient} from '@slack/web-api'
 import {extractImgSrc} from './extract.js'
 import {slackifyMarkdown} from 'slackify-markdown'
+import {addCommentNotification, loadMetadata, Notification, saveMetadata} from './metadata.js'
 
 /**
  * The main function for the action.
@@ -15,6 +16,14 @@ export async function run(): Promise<void> {
     const oct = github.getOctokit(core.getInput('github-token'))
 
     const sender = {login: payload.sender?.login ?? 'unknown', avatar_url: payload.sender?.avatar_url || ''}
+
+    if (!payload.issue) return
+    let metadata = await loadMetadata({
+      owner: github.context.repo.owner,
+      repo: github.context.repo.repo,
+      issueNumber: payload.issue.number,
+      octkit: oct
+    })
 
     if (github.context.eventName === 'issue_comment') {
       if (!payload.comment) return
@@ -29,7 +38,7 @@ export async function run(): Promise<void> {
         }
       })
 
-      await notify({
+      const result = await notify({
         rawBody: payload.comment.body ?? '',
         imageUrls: extractImgSrc(comment.data.body_html || ''),
         color: '#808080',
@@ -40,12 +49,27 @@ export async function run(): Promise<void> {
           number: payload.issue?.number ?? 0
         }
       })
+
+      if (metadata) {
+        metadata = addCommentNotification(
+          metadata,
+          payload.comment.id,
+          result.message
+        )
+
+        await saveMetadata({
+          owner: github.context.repo.owner,
+          repo: github.context.repo.repo,
+          issueNumber: payload.issue.number,
+          metadata,
+          octkit: oct
+        })
+      }
     } else if (github.context.eventName === 'issues') {
       let rawBody = ''
       let imageUrls: string[] = []
       let color = '#36a64f' // green
 
-      if (!payload.issue) return
       rawBody = payload.issue.body ?? ''
 
       // get private image urls from github and upload to slack
@@ -68,7 +92,7 @@ export async function run(): Promise<void> {
         color = '#808080'
       }
 
-      await notify({
+      const result = await notify({
         color,
         rawBody,
         imageUrls,
@@ -78,6 +102,22 @@ export async function run(): Promise<void> {
           title: payload.issue?.title ?? '',
           number: payload.issue?.number ?? 0
         }
+      })
+
+      metadata = {
+        version: '0.0.1',
+        issue_notification: result.message,
+        comment_notifications: {}
+      }
+    }
+
+    if (metadata) {
+      await saveMetadata({
+        owner: github.context.repo.owner,
+        repo: github.context.repo.repo,
+        issueNumber: payload.issue.number,
+        metadata,
+        octkit: oct
       })
     }
   } catch (error: any) {
@@ -92,7 +132,12 @@ type notifyProps = {
   headerProps: createMessageHeaderProps
 }
 
-async function notify(props: notifyProps): Promise<void> {
+type notifyResult = {
+  message: Notification
+  image?: Notification
+}
+
+async function notify(props: notifyProps): Promise<notifyResult> {
   const slackToken = core.getInput('slack-token')
   const slackChannel = core.getInput('slack-channel')
   const slackClient = new WebClient(slackToken)
@@ -169,6 +214,7 @@ async function notify(props: notifyProps): Promise<void> {
           ...fileIds.slice(1).map((id) => ({id}))
         ],
         channel_id: slackChannel,
+        blocks: createMessageHeader(props.headerProps),
         thread_ts: postRes.ts
       })
       if (!completeRes.ok) {
@@ -176,6 +222,17 @@ async function notify(props: notifyProps): Promise<void> {
           `Failed to complete file upload: ${completeRes.error}`
         )
       }
+    }
+  }
+
+  return {
+    message: {
+      ts: postRes.ts,
+      channel_id: slackChannel
+    },
+    image: {
+      ts: postRes.ts,
+      channel_id: slackChannel
     }
   }
 }
