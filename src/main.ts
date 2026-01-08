@@ -46,6 +46,7 @@ export async function run(): Promise<void> {
         rawBody: payload.comment.body ?? '',
         imageUrls: extractImgSrc(comment.data.body_html || ''),
         color: '#808080',
+        thread_ts: metadata?.issue_notification.ts,
         headerProps: {
           sender,
           url: payload.issue?.html_url ?? '',
