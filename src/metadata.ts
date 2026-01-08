@@ -20,6 +20,20 @@ type loadMetadataProps = {
   octkit: ReturnType<typeof github.getOctokit>
 }
 
+export function addCommentNotification(
+  metadata: Metadata,
+  commentId: number,
+  notification: Notification
+): Metadata {
+  return {
+    ...metadata,
+    comment_notifications: {
+      ...metadata.comment_notifications,
+      [commentId]: notification
+    }
+  }
+}
+
 export async function loadMetadata(props: loadMetadataProps): Promise<Metadata | undefined> {
   const {owner, repo, issueNumber, octkit} = props
 
