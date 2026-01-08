@@ -42,6 +42,7 @@ export async function run(): Promise<void> {
         }
       })
 
+      core.info('reply to thread_ts: ' + metadata?.issue_notification.ts)
       const result = await notify({
         rawBody: payload.comment.body ?? '',
         imageUrls: extractImgSrc(comment.data.body_html || ''),
