@@ -1,0 +1,27 @@
+name: Comment Action
+
+on:
+  issue_comment:
+    types: [created]
+  issues:
+    types: [opened, closed]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  post-comment:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v6
+
+      - name: Post Comment
+        uses: ry023/customizable-slack-notify@v0.0.1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          slack-token: ${{ secrets.SLACK_BOT_TOKEN }}
+          slack-channel: ${{ secrets.SLACK_CHANNEL_ID }}
