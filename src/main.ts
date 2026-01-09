@@ -3,7 +3,7 @@ import * as github from '@actions/github'
 import {KnownBlock, Block, WebClient} from '@slack/web-api'
 import {extractImgSrc} from './extract.js'
 import {slackifyMarkdown} from 'slackify-markdown'
-import {addCommentNotification, parseMetadata, Notification, saveMetadata} from './metadata.js'
+import {addCommentNotification, parseMetadata, Notification, saveMetadata, Metadata} from './metadata.js'
 
 /**
  * The main function for the action.
@@ -15,7 +15,6 @@ export async function run(): Promise<void> {
     const payload = github.context.payload
     const oct = github.getOctokit(core.getInput('github-token'))
 
-    const sender = {login: payload.sender?.login ?? 'unknown', avatar_url: payload.sender?.avatar_url || ''}
 
     if (!payload.issue?.body) {
       core.error('No issue body found in the payload.')
@@ -23,110 +22,124 @@ export async function run(): Promise<void> {
     }
     core.info('raw issue body: ' + payload.issue.body)
 
-    let metadata = parseMetadata(payload.issue.body)
-
     if (github.context.eventName === 'issue_comment') {
-      if (!payload.comment) return
-
-      // get private image urls from github and upload to slack
-      const comment = await oct.rest.issues.getComment({
-        owner: github.context.repo.owner,
-        repo: github.context.repo.repo,
-        comment_id: payload.comment.id,
-        headers: {
-          accept: 'application/vnd.github.html+json'
-        }
-      })
-
-      core.info('reply to thread_ts: ' + metadata?.issue_notification.ts)
-      const result = await notify({
-        rawBody: payload.comment.body ?? '',
-        imageUrls: extractImgSrc(comment.data.body_html || ''),
-        color: '#808080',
-        thread_ts: metadata?.issue_notification.ts,
-        headerProps: {
-          sender,
-          url: payload.issue?.html_url ?? '',
-          title: payload.issue?.title ?? '',
-          number: payload.issue?.number ?? 0
-        }
-      })
-
-      if (metadata) {
-        metadata = addCommentNotification(
-          metadata,
-          payload.comment.id,
-          result.message
-        )
-
-        await saveMetadata({
-          rawBody: payload.issue.body,
-          owner: github.context.repo.owner,
-          repo: github.context.repo.repo,
-          issueNumber: payload.issue.number,
-          metadata,
-          octkit: oct
-        })
-      }
+      await notifyComment(payload, oct)
     } else if (github.context.eventName === 'issues') {
-      let rawBody = ''
-      let imageUrls: string[] = []
-      let color = '#36a64f' // green
-
-      rawBody = payload.issue.body ?? ''
-
-      // get private image urls from github and upload to slack
-      const issue = await oct.rest.issues.get({
-        owner: github.context.repo.owner,
-        repo: github.context.repo.repo,
-        issue_number: payload.issue.number,
-        headers: {
-          accept: 'application/vnd.github.html+json'
-        }
-      })
-      imageUrls = extractImgSrc(issue.data.body_html || '')
-
-      if (github.context.payload.action === 'opened') {
-        color = '#36a64f' // green
-      } else if (github.context.payload.action === 'closed') {
-        if (rawBody === '') {
-          rawBody = `:white_check_mark: This issue has been closed.`
-        }
-        color = '#808080'
-      }
-
-      const result = await notify({
-        color,
-        rawBody,
-        imageUrls,
-        headerProps: {
-          sender,
-          url: payload.issue?.html_url ?? '',
-          title: payload.issue?.title ?? '',
-          number: payload.issue?.number ?? 0
-        }
-      })
-
-      metadata = {
-        version: '0.0.1',
-        issue_notification: result.message,
-        comment_notifications: {}
-      }
-    }
-
-    if (metadata) {
-      await saveMetadata({
-        rawBody: payload.issue.body || '',
-        owner: github.context.repo.owner,
-        repo: github.context.repo.repo,
-        issueNumber: payload.issue.number,
-        metadata,
-        octkit: oct
-      })
+      await notifyIssue(payload, oct)
     }
   } catch (error: any) {
     core.setFailed(error.message)
   }
+}
+
+type Payload = typeof github.context.payload
+type Octokit = ReturnType<typeof github.getOctokit>
+
+async function notifyComment(payload: Payload, oct: Octokit) {
+  if (!payload.comment) {
+    core.error('No comment found in the payload.')
+    return
+  }
+  if (!payload.issue?.body) {
+    core.error('No issue body found in the payload.')
+    return
+  }
+  let metadata = parseMetadata(payload.issue.body)
+
+  // get private image urls from github and upload to slack
+  const comment = await oct.rest.issues.getComment({
+    owner: github.context.repo.owner,
+    repo: github.context.repo.repo,
+    comment_id: payload.comment.id,
+    headers: {
+      accept: 'application/vnd.github.html+json'
+    }
+  })
+
+  core.info('reply to thread_ts: ' + metadata?.issue_notification.ts)
+  const result = await notify({
+    rawBody: payload.comment.body ?? '',
+    imageUrls: extractImgSrc(comment.data.body_html || ''),
+    color: '#808080',
+    thread_ts: metadata?.issue_notification.ts,
+    headerProps: {
+      sender: {login: payload.sender?.login ?? 'unknown', avatar_url: payload.sender?.avatar_url || ''},
+      url: payload.issue?.html_url ?? '',
+      title: payload.issue?.title ?? '',
+      number: payload.issue?.number ?? 0
+    }
+  })
+
+  if (metadata) {
+    metadata = addCommentNotification(
+      metadata,
+      payload.comment.id,
+      result.message
+    )
+
+    await saveMetadata({
+      rawBody: payload.issue.body,
+      owner: github.context.repo.owner,
+      repo: github.context.repo.repo,
+      issueNumber: payload.issue.number,
+      metadata,
+      octkit: oct
+    })
+  }
+
+}
+
+async function notifyIssue(payload: Payload, oct: Octokit) {
+  if (!payload.issue?.body) {
+    core.error('No issue body found in the payload.')
+    return
+  }
+
+  // get private image urls from github and upload to slack
+  const issue = await oct.rest.issues.get({
+    owner: github.context.repo.owner,
+    repo: github.context.repo.repo,
+    issue_number: payload.issue.number,
+    headers: {
+      accept: 'application/vnd.github.html+json'
+    }
+  })
+
+  let color = '#36a64f' // green
+  let rawBody = payload.issue.body ?? ''
+  if (github.context.payload.action === 'closed') {
+    if (rawBody === '') {
+      rawBody = `:white_check_mark: This issue has been closed.`
+    }
+    color = '#808080' // gray
+  }
+
+  const result = await notify({
+    color,
+    rawBody,
+    imageUrls: extractImgSrc(issue.data.body_html || ''),
+    headerProps: {
+      sender: {login: payload.sender?.login ?? 'unknown', avatar_url: payload.sender?.avatar_url || ''},
+      url: payload.issue?.html_url ?? '',
+      title: payload.issue?.title ?? '',
+      number: payload.issue?.number ?? 0
+    }
+  })
+
+  const metadata = {
+    version: '0.0.1',
+    issue_notification: result.message,
+    comment_notifications: {}
+  }
+
+  await saveMetadata({
+    rawBody: payload.issue.body,
+    owner: github.context.repo.owner,
+    repo: github.context.repo.repo,
+    issueNumber: payload.issue.number,
+    metadata,
+    octkit: oct
+  })
 }
 
 type notifyProps = {
