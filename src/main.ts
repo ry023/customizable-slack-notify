@@ -1,13 +1,14 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
-import { KnownBlock, Block, WebClient } from '@slack/web-api'
-import { extractImgSrc } from './extract.js'
-import { slackifyMarkdown } from 'slackify-markdown'
+import {KnownBlock, Block, WebClient} from '@slack/web-api'
+import {extractImgSrc} from './extract.js'
+import {slackifyMarkdown} from 'slackify-markdown'
 import {
   addCommentNotification,
   parseMetadata,
   Notification,
-  saveMetadata
+  saveMetadata,
+  Metadata
 } from './metadata.js'
 
 /**
@@ -27,11 +28,12 @@ export async function run(): Promise<void> {
     core.info('raw issue body: ' + payload.issue.body)
 
     if (github.context.eventName === 'issue_comment') {
-      if (!parseMetadata(payload.issue.body)) {
+      let metadata = parseMetadata(payload.issue.body)
+      if (!metadata) {
         core.info('No metadata found. Notify issue again and create metadata.')
-        await notifyIssue(payload, oct)
+        metadata = await notifyIssue(payload, oct)
       }
-      await notifyComment(payload, oct)
+      await notifyComment(payload, oct, metadata)
     } else if (github.context.eventName === 'issues') {
       await notifyIssue(payload, oct)
     }
@@ -43,7 +45,7 @@ export async function run(): Promise<void> {
 type Payload = typeof github.context.payload
 type Octokit = ReturnType<typeof github.getOctokit>
 
-async function notifyComment(payload: Payload, oct: Octokit) {
+async function notifyComment(payload: Payload, oct: Octokit, metadata?: Metadata) {
   if (!payload.comment) {
     core.error('No comment found in the payload.')
     return
@@ -52,7 +54,6 @@ async function notifyComment(payload: Payload, oct: Octokit) {
     core.error('No issue body found in the payload.')
     return
   }
-  let metadata = parseMetadata(payload.issue.body)
 
   // get private image urls from github and upload to slack
   const comment = await oct.rest.issues.getComment({
@@ -99,7 +100,7 @@ async function notifyComment(payload: Payload, oct: Octokit) {
   }
 }
 
-async function notifyIssue(payload: Payload, oct: Octokit) {
+async function notifyIssue(payload: Payload, oct: Octokit): Promise<Metadata | undefined> {
   if (!payload.issue?.body) {
     core.error('No issue body found in the payload.')
     return
@@ -153,6 +154,8 @@ async function notifyIssue(payload: Payload, oct: Octokit) {
     metadata,
     octkit: oct
   })
+
+  return metadata
 }
 
 type notifyProps = {
@@ -197,7 +200,7 @@ async function notify(props: notifyProps): Promise<notifyResult> {
           throw new Error(`Failed to fetch image: ${src}`)
         }
         const buffer = await res.arrayBuffer()
-        return { src, buffer: Buffer.from(buffer) }
+        return {src, buffer: Buffer.from(buffer)}
       })
     )
 
@@ -241,7 +244,7 @@ async function notify(props: notifyProps): Promise<notifyResult> {
     // complete image upload flow
     if (fileIds.length > 0) {
       const completeRes = await slackClient.files.completeUploadExternal({
-        files: [{ id: fileIds[0] }, ...fileIds.slice(1).map((id) => ({ id }))],
+        files: [{id: fileIds[0]}, ...fileIds.slice(1).map((id) => ({id}))],
         channel_id: slackChannel,
         blocks: createMessageHeader(props.headerProps),
         thread_ts: props.thread_ts ?? postRes.ts
