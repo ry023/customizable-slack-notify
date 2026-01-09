@@ -1,8 +1,8 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
-import {KnownBlock, Block, WebClient} from '@slack/web-api'
-import {extractImgSrc} from './extract.js'
-import {slackifyMarkdown} from 'slackify-markdown'
+import { KnownBlock, Block, WebClient } from '@slack/web-api'
+import { extractImgSrc } from './extract.js'
+import { slackifyMarkdown } from 'slackify-markdown'
 import {
   addCommentNotification,
   parseMetadata,
@@ -45,7 +45,11 @@ export async function run(): Promise<void> {
 type Payload = typeof github.context.payload
 type Octokit = ReturnType<typeof github.getOctokit>
 
-async function notifyComment(payload: Payload, oct: Octokit, metadata?: Metadata) {
+async function notifyComment(
+  payload: Payload,
+  oct: Octokit,
+  metadata?: Metadata
+) {
   if (!payload.comment) {
     core.error('No comment found in the payload.')
     return
@@ -100,7 +104,10 @@ async function notifyComment(payload: Payload, oct: Octokit, metadata?: Metadata
   }
 }
 
-async function notifyIssue(payload: Payload, oct: Octokit): Promise<Metadata | undefined> {
+async function notifyIssue(
+  payload: Payload,
+  oct: Octokit
+): Promise<Metadata | undefined> {
   if (!payload.issue?.body) {
     core.error('No issue body found in the payload.')
     return
@@ -177,9 +184,8 @@ async function notify(props: notifyProps): Promise<notifyResult> {
   const slackClient = new WebClient(slackToken)
 
   // post message
-  const postRes = await slackClient.chat.postMessage({
+  const params = {
     channel: slackChannel,
-    thread_ts: props.thread_ts,
     blocks: createMessageHeader(props.headerProps),
     attachments: [
       {
@@ -187,7 +193,12 @@ async function notify(props: notifyProps): Promise<notifyResult> {
         blocks: createMessageBody(props.rawBody)
       }
     ]
-  })
+  }
+  const p =
+    props.thread_ts !== undefined
+      ? { ...params, thread_ts: props.thread_ts!, reply_broadcast: true }
+      : params
+  const postRes = await slackClient.chat.postMessage(p)
   if (!postRes.ok) {
     throw new Error(`Slack API error: ${postRes.error}`)
   }
@@ -200,7 +211,7 @@ async function notify(props: notifyProps): Promise<notifyResult> {
           throw new Error(`Failed to fetch image: ${src}`)
         }
         const buffer = await res.arrayBuffer()
-        return {src, buffer: Buffer.from(buffer)}
+        return { src, buffer: Buffer.from(buffer) }
       })
     )
 
@@ -244,7 +255,7 @@ async function notify(props: notifyProps): Promise<notifyResult> {
     // complete image upload flow
     if (fileIds.length > 0) {
       const completeRes = await slackClient.files.completeUploadExternal({
-        files: [{id: fileIds[0]}, ...fileIds.slice(1).map((id) => ({id}))],
+        files: [{ id: fileIds[0] }, ...fileIds.slice(1).map((id) => ({ id }))],
         channel_id: slackChannel,
         blocks: createMessageHeader(props.headerProps),
         thread_ts: props.thread_ts ?? postRes.ts
