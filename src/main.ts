@@ -23,6 +23,10 @@ export async function run(): Promise<void> {
     core.info('raw issue body: ' + payload.issue.body)
 
     if (github.context.eventName === 'issue_comment') {
+      if (!parseMetadata(payload.issue.body)) {
+        core.info('No metadata found. Notify issue again and create metadata.')
+        await notifyIssue(payload, oct)
+      }
       await notifyComment(payload, oct)
     } else if (github.context.eventName === 'issues') {
       await notifyIssue(payload, oct)
