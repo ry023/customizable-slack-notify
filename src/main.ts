@@ -186,6 +186,7 @@ async function notify(props: notifyProps): Promise<notifyResult> {
   // post message
   const params = {
     channel: slackChannel,
+    text: `(${props.headerProps.sender.login}/<${props.headerProps.url}|${props.headerProps.title.slice(0, 8)}>) ${props.rawBody.slice(0, 1000)}`,
     blocks: createMessageHeader(props.headerProps),
     attachments: [
       {
