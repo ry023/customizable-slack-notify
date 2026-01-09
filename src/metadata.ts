@@ -52,11 +52,8 @@ type saveMetadataProps = {
   octkit: ReturnType<typeof github.getOctokit>
 }
 
-
-export async function saveMetadata(
-  props: saveMetadataProps
-): Promise<void> {
-  const {owner, repo, issueNumber, metadata, octkit, rawBody} = props
+export async function saveMetadata(props: saveMetadataProps): Promise<void> {
+  const { owner, repo, issueNumber, metadata, octkit, rawBody } = props
 
   // metadataを埋め込む
   const newBody = embedMetadata(rawBody, metadata)

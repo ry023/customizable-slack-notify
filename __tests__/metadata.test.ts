@@ -1,4 +1,4 @@
-import {parseMetadata, addCommentNotification} from '../src/metadata.js'
+import { parseMetadata, addCommentNotification } from '../src/metadata.js'
 
 describe('metadata.ts', () => {
   it('addCommentNotification', async () => {
@@ -11,14 +11,10 @@ describe('metadata.ts', () => {
       comment_notifications: {}
     }
 
-    const updatedMetadata = addCommentNotification(
-      metadata,
-      123456,
-      {
-        ts: '1767867000.000000',
-        channel_id: 'C0000000000'
-      }
-    )
+    const updatedMetadata = addCommentNotification(metadata, 123456, {
+      ts: '1767867000.000000',
+      channel_id: 'C0000000000'
+    })
 
     expect(updatedMetadata).toEqual({
       version: '0.0.1',
