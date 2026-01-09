@@ -1,5 +1,5 @@
 {
-  "name": "typescript-action",
+  "name": "customizable-github-action",
   "description": "GitHub Actions TypeScript template",
   "version": "0.0.0",
   "author": "",
@@ -37,13 +37,18 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@actions/core": "^1.11.1"
+    "@actions/core": "^1.11.1",
+    "@actions/github": "^6.0.1",
+    "@slack/web-api": "^7.13.0",
+    "cheerio": "^1.1.2",
+    "slackify-markdown": "^5.0.0"
   },
   "devDependencies": {
     "@eslint/compat": "^1.4.0",
     "@github/local-action": "^6.0.2",
     "@jest/globals": "^30.2.0",
     "@rollup/plugin-commonjs": "^29.0.0",
+    "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.3",
     "@rollup/plugin-typescript": "^12.3.0",
     "@types/jest": "^30.0.0",
@@ -60,7 +65,7 @@
     "make-coverage-badge": "^1.2.0",
     "prettier": "^3.7.4",
     "prettier-eslint": "^16.4.2",
-    "rollup": "^4.53.3",
+    "rollup": "^4.55.1",
     "ts-jest": "^29.4.6",
     "ts-jest-resolver": "^2.0.1",
     "typescript": "^5.9.3"

@@ -1,18 +1,23 @@
-name: The name of your action here
-description: Provide a description here
-author: Your name or organization here
+name: Customizable Slack Notifiy
+description: Notify comments in github to a slack channel
+author: ry023
 
 # Add your action's branding here. This will appear on the GitHub Marketplace.
 branding:
   icon: heart
-  color: red
+  color: gray-dark
 
 # Define your inputs here.
 inputs:
-  milliseconds:
-    description: Your input description here
+  github-token:
+    description: Github token to get comment via REST API
     required: true
-    default: '1000'
+  slack-token:
+    description: Slack token to post message to slack channel
+    required: true
+  slack-channel:
+    description: Slack channel to post message
+    required: true
 
 # Define your outputs here.
 outputs:
