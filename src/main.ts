@@ -3,7 +3,7 @@ import * as github from '@actions/github'
 import {KnownBlock, Block, WebClient} from '@slack/web-api'
 import {extractImgSrc} from './extract.js'
 import {slackifyMarkdown} from 'slackify-markdown'
-import {addCommentNotification, parseMetadata, Notification, saveMetadata, Metadata} from './metadata.js'
+import {addCommentNotification, parseMetadata, Notification, saveMetadata} from './metadata.js'
 
 /**
  * The main function for the action.
