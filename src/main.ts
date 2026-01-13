@@ -127,9 +127,7 @@ async function notifyIssue(
   let color = '#36a64f' // green
   let rawBody = payload.issue.body ?? ''
   if (github.context.payload.action === 'closed') {
-    if (rawBody === '') {
-      rawBody = `:white_check_mark: This issue has been closed.`
-    }
+    rawBody = `:white_check_mark: This issue has been closed.`
     color = '#808080' // gray
   }
 
