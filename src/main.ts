@@ -75,6 +75,7 @@ async function notifyComment(
     imageUrls: extractImgSrc(comment.data.body_html || ''),
     color: '#808080',
     thread_ts: metadata?.issue_notification.ts,
+    text: payload.comment.body.slice(0, 1000),
     headerProps: {
       sender: {
         login: payload.sender?.login ?? 'unknown',
@@ -136,6 +137,7 @@ async function notifyIssue(
     color,
     rawBody,
     imageUrls: extractImgSrc(issue.data.body_html || ''),
+    text: payload.issue.title,
     headerProps: {
       sender: {
         login: payload.sender?.login ?? 'unknown',
@@ -170,6 +172,7 @@ type notifyProps = {
   imageUrls: string[]
   color: string
   thread_ts?: string
+  text: string
   headerProps: createMessageHeaderProps
 }
 
@@ -186,7 +189,7 @@ async function notify(props: notifyProps): Promise<notifyResult> {
   // post message
   const params = {
     channel: slackChannel,
-    text: createMessageText(props.rawBody, props.headerProps),
+    text: props.text,
     blocks: createMessageHeader(props.headerProps),
     attachments: [
       {
@@ -287,19 +290,6 @@ type createMessageHeaderProps = {
   url: string
   title: string
   number: number
-}
-
-function createMessageText(
-  rawBody: string,
-  props: createMessageHeaderProps
-): string {
-  let title = props.title
-  if (title.length > 8) {
-    title = title.slice(0, 8) + '...'
-  }
-  const b = rawBody.slice(0, 1000)
-
-  return `(${props.sender.login}/<${props.url}|${title}>) ${b}`
 }
 
 function createMessageHeader(
