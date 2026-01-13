@@ -27,15 +27,20 @@ export async function run(): Promise<void> {
     }
     core.info('raw issue body: ' + payload.issue.body)
 
+    let metadata = parseMetadata(payload.issue.body)
+
+    // notify issue opened when no metadata found even if another event
+    if (!metadata) {
+      core.info('No metadata found. Notify issue again and create metadata.')
+      metadata = await notifyIssueOpen(payload, oct)
+    }
+
     if (github.context.eventName === 'issue_comment') {
-      let metadata = parseMetadata(payload.issue.body)
-      if (!metadata) {
-        core.info('No metadata found. Notify issue again and create metadata.')
-        metadata = await notifyIssue(payload, oct)
-      }
       await notifyComment(payload, oct, metadata)
     } else if (github.context.eventName === 'issues') {
-      await notifyIssue(payload, oct)
+      if (payload.action === 'closed') {
+        await notifyIssueClose(payload, metadata)
+      }
     }
   } catch (error: any) {
     core.setFailed(error.message)
@@ -105,7 +110,33 @@ async function notifyComment(
   }
 }
 
-async function notifyIssue(
+async function notifyIssueClose(
+  payload: Payload,
+  metadata?: Metadata
+): Promise<void> {
+  if (!payload.issue) {
+    core.error('No issue found in the payload.')
+    return
+  }
+  await notify({
+    color: '#808080', // green
+    rawBody: `:white_check_mark: This issue has been closed.`,
+    imageUrls: [],
+    text: payload.issue.title,
+    thread_ts: metadata?.issue_notification.ts,
+    headerProps: {
+      sender: {
+        login: payload.sender?.login ?? 'unknown',
+        avatar_url: payload.sender?.avatar_url || ''
+      },
+      url: payload.issue?.html_url ?? '',
+      title: payload.issue?.title ?? '',
+      number: payload.issue?.number ?? 0
+    }
+  })
+}
+
+async function notifyIssueOpen(
   payload: Payload,
   oct: Octokit
 ): Promise<Metadata | undefined> {
@@ -124,22 +155,15 @@ async function notifyIssue(
     }
   })
 
-  let color = '#36a64f' // green
-  let rawBody = payload.issue.body ?? ''
-  if (github.context.payload.action === 'closed') {
-    rawBody = `:white_check_mark: This issue has been closed.`
-    color = '#808080' // gray
-  }
-
   const result = await notify({
-    color,
-    rawBody,
+    color: '#36a64f', // green
+    rawBody: payload.issue.body,
     imageUrls: extractImgSrc(issue.data.body_html || ''),
     text: payload.issue.title,
     headerProps: {
       sender: {
-        login: payload.sender?.login ?? 'unknown',
-        avatar_url: payload.sender?.avatar_url || ''
+        login: issue.data.user?.login ?? 'unknown',
+        avatar_url: issue.data.user?.avatar_url || ''
       },
       url: payload.issue?.html_url ?? '',
       title: payload.issue?.title ?? '',
