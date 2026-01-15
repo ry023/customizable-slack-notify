@@ -46,25 +46,35 @@ export function parseMetadata(rawBody: string): Metadata | undefined {
 type saveMetadataProps = {
   owner: string
   repo: string
-  issueNumber: number
   rawBody: string
   metadata: Metadata
   octkit: ReturnType<typeof github.getOctokit>
+  issueNumber: number
+  issueType?: 'issue' | 'pull_request'
 }
 
 export async function saveMetadata(props: saveMetadataProps): Promise<void> {
-  const { owner, repo, issueNumber, metadata, octkit, rawBody } = props
+  const {owner, repo, issueNumber, metadata, octkit, rawBody} = props
 
   // metadataを埋め込む
   const newBody = embedMetadata(rawBody, metadata)
 
   // issue bodyを更新
-  await octkit.rest.issues.update({
-    owner,
-    repo,
-    issue_number: issueNumber,
-    body: newBody
-  })
+  if (props.issueType === 'pull_request') {
+    await octkit.rest.pulls.update({
+      owner,
+      repo,
+      pull_number: issueNumber,
+      body: newBody
+    })
+  } else {
+    await octkit.rest.issues.update({
+      owner,
+      repo,
+      issue_number: issueNumber,
+      body: newBody
+    })
+  }
 }
 
 function embedMetadata(rawBody: string, metadata: Metadata): string {
