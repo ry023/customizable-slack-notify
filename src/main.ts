@@ -39,7 +39,7 @@ export async function run(): Promise<void> {
     }
 
     if (github.context.eventName === 'issue_comment') {
-      await notifyComment(payload, oct, metadata)
+      await notifyComment(payload, oct, issueType, metadata)
     } else if (github.context.eventName === 'issues') {
       if (payload.action === 'closed') {
         await notifyIssueClose(payload, metadata)
@@ -56,6 +56,7 @@ type Octokit = ReturnType<typeof github.getOctokit>
 async function notifyComment(
   payload: Payload,
   oct: Octokit,
+  issueType: 'issue' | 'pull_request',
   metadata?: Metadata
 ) {
   if (!payload.comment) {
@@ -107,6 +108,7 @@ async function notifyComment(
       owner: github.context.repo.owner,
       repo: github.context.repo.repo,
       issueNumber: payload.issue.number,
+      issueType,
       metadata,
       octkit: oct
     })
@@ -213,6 +215,7 @@ async function notifyIssueOpen(
     owner: github.context.repo.owner,
     repo: github.context.repo.repo,
     issueNumber: payload.number,
+    issueType,
     metadata,
     octkit: oct
   })
