@@ -54,7 +54,7 @@ type saveMetadataProps = {
 }
 
 export async function saveMetadata(props: saveMetadataProps): Promise<void> {
-  const {owner, repo, issueNumber, metadata, octkit, rawBody} = props
+  const { owner, repo, issueNumber, metadata, octkit, rawBody } = props
 
   // metadataを埋め込む
   const newBody = embedMetadata(rawBody, metadata)

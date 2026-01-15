@@ -1,8 +1,8 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
-import {KnownBlock, Block, WebClient} from '@slack/web-api'
-import {extractImgSrc} from './extract.js'
-import {slackifyMarkdown} from 'slackify-markdown'
+import { KnownBlock, Block, WebClient } from '@slack/web-api'
+import { extractImgSrc } from './extract.js'
+import { slackifyMarkdown } from 'slackify-markdown'
 import {
   addCommentNotification,
   parseMetadata,
@@ -149,13 +149,15 @@ async function notifyIssueOpen(
     return
   }
 
-  let data: {
-    body_html?: string
-    user?: {
-      login: string
-      avatar_url: string
-    } | null
-  } | undefined
+  let data:
+    | {
+        body_html?: string
+        user?: {
+          login: string
+          avatar_url: string
+        } | null
+      }
+    | undefined
 
   if (issueType === 'pull_request') {
     const pull = await oct.rest.pulls.get({
@@ -251,7 +253,7 @@ async function notify(props: notifyProps): Promise<notifyResult> {
   }
   const p =
     props.thread_ts !== undefined
-      ? {...params, thread_ts: props.thread_ts!, reply_broadcast: true}
+      ? { ...params, thread_ts: props.thread_ts!, reply_broadcast: true }
       : params
   const postRes = await slackClient.chat.postMessage(p)
   if (!postRes.ok) {
@@ -266,7 +268,7 @@ async function notify(props: notifyProps): Promise<notifyResult> {
           throw new Error(`Failed to fetch image: ${src}`)
         }
         const buffer = await res.arrayBuffer()
-        return {src, buffer: Buffer.from(buffer)}
+        return { src, buffer: Buffer.from(buffer) }
       })
     )
 
@@ -310,7 +312,7 @@ async function notify(props: notifyProps): Promise<notifyResult> {
     // complete image upload flow
     if (fileIds.length > 0) {
       const completeRes = await slackClient.files.completeUploadExternal({
-        files: [{id: fileIds[0]}, ...fileIds.slice(1).map((id) => ({id}))],
+        files: [{ id: fileIds[0] }, ...fileIds.slice(1).map((id) => ({ id }))],
         channel_id: slackChannel,
         blocks: createMessageHeader(props.headerProps),
         thread_ts: props.thread_ts ?? postRes.ts
