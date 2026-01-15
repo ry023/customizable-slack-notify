@@ -42,7 +42,28 @@ export async function run(): Promise<void> {
       await notifyComment(payload, oct, issueType, metadata)
     } else if (github.context.eventName === 'issues') {
       if (payload.action === 'closed') {
-        await notifyIssueClose(payload, metadata)
+        await notifySimpleMessage({
+          payload,
+          metadata,
+          rawBody: `:white_check_mark: This issue has been closed.`
+        })
+      }
+    } else if (github.context.eventName === 'pull_request') {
+      if (payload.action === 'closed') {
+        if (payload.pull_request?.merged) {
+          await notifySimpleMessage({
+            payload,
+            metadata,
+            rawBody: `:tada: This pull request has been merged.`,
+            color: '#8256D0'
+          })
+        } else {
+          await notifySimpleMessage({
+            payload,
+            metadata,
+            rawBody: `:white_check_mark: This pull request has been closed`
+          })
+        }
       }
     }
   } catch (error: any) {
@@ -115,17 +136,24 @@ async function notifyComment(
   }
 }
 
-async function notifyIssueClose(
-  payload: Payload,
+async function notifySimpleMessage({
+  payload,
+  rawBody,
+  metadata,
+  color = '#808080'
+}: {
+  payload: Payload
+  rawBody: string
   metadata?: Metadata
-): Promise<void> {
+  color?: string
+}): Promise<void> {
   if (!payload.issue) {
     core.error('No issue found in the payload.')
     return
   }
   await notify({
-    color: '#808080', // green
-    rawBody: `:white_check_mark: This issue has been closed.`,
+    color, // green
+    rawBody,
     imageUrls: [],
     text: payload.issue.title,
     thread_ts: metadata?.issue_notification.ts,
