@@ -1,8 +1,8 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
-import { KnownBlock, Block, WebClient } from '@slack/web-api'
-import { extractImgSrc } from './extract.js'
-import { slackifyMarkdown } from 'slackify-markdown'
+import {KnownBlock, Block, WebClient} from '@slack/web-api'
+import {extractImgSrc} from './extract.js'
+import {slackifyMarkdown} from 'slackify-markdown'
 import {
   addCommentNotification,
   parseMetadata,
@@ -29,10 +29,13 @@ export async function run(): Promise<void> {
 
     let metadata = parseMetadata(payload.issue.body)
 
+    const issueType = payload.pull_request ? 'pull_request' : 'issue'
+    const issuePayload = payload.pull_requst ?? payload.issue
+
     // notify issue opened when no metadata found even if another event
     if (!metadata) {
       core.info('No metadata found. Notify issue again and create metadata.')
-      metadata = await notifyIssueOpen(payload, oct)
+      metadata = await notifyIssueOpen(issuePayload, oct, issueType)
     }
 
     if (github.context.eventName === 'issue_comment') {
@@ -137,37 +140,63 @@ async function notifyIssueClose(
 }
 
 async function notifyIssueOpen(
-  payload: Payload,
-  oct: Octokit
+  payload: Payload['issue'] | Payload['pull_request'],
+  oct: Octokit,
+  issueType: 'issue' | 'pull_request' = 'issue'
 ): Promise<Metadata | undefined> {
-  if (!payload.issue?.body) {
+  if (!payload?.body) {
     core.error('No issue body found in the payload.')
     return
   }
 
-  // get private image urls from github and upload to slack
-  const issue = await oct.rest.issues.get({
-    owner: github.context.repo.owner,
-    repo: github.context.repo.repo,
-    issue_number: payload.issue.number,
-    headers: {
-      accept: 'application/vnd.github.html+json'
-    }
-  })
+  let data: {
+    body_html?: string
+    user?: {
+      login: string
+      avatar_url: string
+    } | null
+  } | undefined
+
+  if (issueType === 'pull_request') {
+    const pull = await oct.rest.pulls.get({
+      owner: github.context.repo.owner,
+      repo: github.context.repo.repo,
+      pull_number: payload.number,
+      headers: {
+        accept: 'application/vnd.github.html+json'
+      }
+    })
+    data = pull.data
+  } else if (issueType === 'issue') {
+    // get private image urls from github and upload to slack
+    const issue = await oct.rest.issues.get({
+      owner: github.context.repo.owner,
+      repo: github.context.repo.repo,
+      issue_number: payload.number,
+      headers: {
+        accept: 'application/vnd.github.html+json'
+      }
+    })
+    data = issue.data
+  }
+
+  if (!data) {
+    throw new Error('Failed to fetch issue/pull request data from GitHub.')
+  }
 
   const result = await notify({
     color: '#36a64f', // green
-    rawBody: payload.issue.body,
-    imageUrls: extractImgSrc(issue.data.body_html || ''),
-    text: payload.issue.title,
+    rawBody: payload.body,
+    imageUrls: extractImgSrc(data.body_html || ''),
+    text: payload.title,
     headerProps: {
       sender: {
-        login: issue.data.user?.login ?? 'unknown',
-        avatar_url: issue.data.user?.avatar_url || ''
+        login: data.user?.login ?? 'unknown',
+        avatar_url: data.user?.avatar_url || ''
       },
-      url: payload.issue?.html_url ?? '',
-      title: payload.issue?.title ?? '',
-      number: payload.issue?.number ?? 0
+      url: payload.html_url ?? '',
+      title: payload.title ?? '',
+      number: payload.number ?? 0
     }
   })
 
@@ -178,10 +207,10 @@ async function notifyIssueOpen(
   }
 
   await saveMetadata({
-    rawBody: payload.issue.body,
+    rawBody: payload.body,
     owner: github.context.repo.owner,
     repo: github.context.repo.repo,
-    issueNumber: payload.issue.number,
+    issueNumber: payload.number,
     metadata,
     octkit: oct
   })
@@ -222,7 +251,7 @@ async function notify(props: notifyProps): Promise<notifyResult> {
   }
   const p =
     props.thread_ts !== undefined
-      ? { ...params, thread_ts: props.thread_ts!, reply_broadcast: true }
+      ? {...params, thread_ts: props.thread_ts!, reply_broadcast: true}
       : params
   const postRes = await slackClient.chat.postMessage(p)
   if (!postRes.ok) {
@@ -237,7 +266,7 @@ async function notify(props: notifyProps): Promise<notifyResult> {
           throw new Error(`Failed to fetch image: ${src}`)
         }
         const buffer = await res.arrayBuffer()
-        return { src, buffer: Buffer.from(buffer) }
+        return {src, buffer: Buffer.from(buffer)}
       })
     )
 
@@ -281,7 +310,7 @@ async function notify(props: notifyProps): Promise<notifyResult> {
     // complete image upload flow
     if (fileIds.length > 0) {
       const completeRes = await slackClient.files.completeUploadExternal({
-        files: [{ id: fileIds[0] }, ...fileIds.slice(1).map((id) => ({ id }))],
+        files: [{id: fileIds[0]}, ...fileIds.slice(1).map((id) => ({id}))],
         channel_id: slackChannel,
         blocks: createMessageHeader(props.headerProps),
         thread_ts: props.thread_ts ?? postRes.ts
