@@ -84,8 +84,10 @@ async function notifyComment(
     core.error('No comment found in the payload.')
     return
   }
-  if (!payload.issue?.body) {
-    core.error('No issue body found in the payload.')
+  const issuePayload =
+    issueType === 'pull_request' ? payload.pull_request : payload.issue
+  if (!issuePayload?.body) {
+    core.error('No issue/pull_request found in the payload.')
     return
   }
 
@@ -111,9 +113,9 @@ async function notifyComment(
         login: payload.sender?.login ?? 'unknown',
         avatar_url: payload.sender?.avatar_url || ''
       },
-      url: payload.issue?.html_url ?? '',
-      title: payload.issue?.title ?? '',
-      number: payload.issue?.number ?? 0
+      url: issuePayload?.html_url ?? '',
+      title: issuePayload?.title ?? '',
+      number: issuePayload?.number ?? 0
     }
   })
 
@@ -125,10 +127,10 @@ async function notifyComment(
     )
 
     await saveMetadata({
-      rawBody: payload.issue.body,
+      rawBody: issuePayload.body,
       owner: github.context.repo.owner,
       repo: github.context.repo.repo,
-      issueNumber: payload.issue.number,
+      issueNumber: issuePayload.number,
       issueType,
       metadata,
       octkit: oct
