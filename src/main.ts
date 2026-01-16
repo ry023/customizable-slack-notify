@@ -21,16 +21,14 @@ export async function run(): Promise<void> {
     const payload = github.context.payload
     const oct = github.getOctokit(core.getInput('github-token'))
 
-    if (!payload.issue?.body) {
-      core.error('No issue body found in the payload.')
-      return
-    }
-    core.info('raw issue body: ' + payload.issue.body)
-
-    let metadata = parseMetadata(payload.issue.body)
-
     const issueType = payload.pull_request ? 'pull_request' : 'issue'
     const issuePayload = payload.pull_requst ?? payload.issue
+
+    if (!issuePayload.body) {
+      core.error('No issue/pull_request body found in the payload.')
+      return
+    }
+    let metadata = parseMetadata(issuePayload.body)
 
     // notify issue opened when no metadata found even if another event
     if (!metadata) {
