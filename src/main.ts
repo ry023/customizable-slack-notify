@@ -22,9 +22,9 @@ export async function run(): Promise<void> {
     const oct = github.getOctokit(core.getInput('github-token'))
 
     const issueType = payload.pull_request ? 'pull_request' : 'issue'
-    const issuePayload = payload.pull_requst ?? payload.issue
+    const issuePayload = payload.pull_request ?? payload.issue
 
-    if (!issuePayload.body) {
+    if (!issuePayload?.body) {
       core.error('No issue/pull_request body found in the payload.')
       return
     }
