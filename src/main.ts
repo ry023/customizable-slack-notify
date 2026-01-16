@@ -147,15 +147,11 @@ async function notifySimpleMessage({
   metadata?: Metadata
   color?: string
 }): Promise<void> {
-  if (!payload.issue) {
-    core.error('No issue found in the payload.')
-    return
-  }
   await notify({
     color, // green
     rawBody,
     imageUrls: [],
-    text: payload.issue.title,
+    text: payload.pull_request?.title || payload.issue?.title || 'unknown',
     thread_ts: metadata?.issue_notification.ts,
     headerProps: {
       sender: {
