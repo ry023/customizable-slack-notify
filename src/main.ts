@@ -38,6 +38,8 @@ export async function run(): Promise<void> {
 
     if (github.context.eventName === 'issue_comment') {
       await notifyComment(payload, oct, issueType, metadata)
+    } else if (github.context.eventName === 'pull_request_review_comment') {
+      await notifyPullRequestReviewComment(payload, oct, metadata)
     } else if (github.context.eventName === 'issues') {
       if (payload.action === 'closed') {
         await notifySimpleMessage({
@@ -71,6 +73,67 @@ export async function run(): Promise<void> {
 
 type Payload = typeof github.context.payload
 type Octokit = ReturnType<typeof github.getOctokit>
+
+async function notifyPullRequestReviewComment(
+  payload: Payload,
+  oct: Octokit,
+  metadata?: Metadata
+) {
+  if (!payload.comment) {
+    core.error('No comment found in the payload.')
+    return
+  }
+  if (!payload.pull_request?.body) {
+    core.error('No pull_request found in the payload.')
+    return
+  }
+
+  // get private image urls from github and upload to slack
+  const comment = await oct.rest.pulls.getReviewComment({
+    owner: github.context.repo.owner,
+    repo: github.context.repo.repo,
+    comment_id: payload.comment.id,
+    headers: {
+      accept: 'application/vnd.github.html+json'
+    }
+  })
+
+  core.info('reply to thread_ts: ' + metadata?.issue_notification.ts)
+  const result = await notify({
+    rawBody: payload.comment.body ?? '',
+    imageUrls: extractImgSrc(comment.data.body_html || ''),
+    color: '#808080',
+    thread_ts: metadata?.issue_notification.ts,
+    text: payload.comment.body.slice(0, 1000),
+    headerProps: {
+      sender: {
+        login: payload.sender?.login ?? 'unknown',
+        avatar_url: payload.sender?.avatar_url || ''
+      },
+      url: payload.pull_request?.html_url ?? '',
+      title: payload.pull_request?.title ?? '',
+      number: payload.pull_request?.number ?? 0
+    }
+  })
+
+  if (metadata) {
+    metadata = addCommentNotification(
+      metadata,
+      payload.comment.id,
+      result.message
+    )
+
+    await saveMetadata({
+      rawBody: payload.pull_request.body,
+      owner: github.context.repo.owner,
+      repo: github.context.repo.repo,
+      issueNumber: payload.pull_request.number,
+      issueType: 'pull_request',
+      metadata,
+      octkit: oct
+    })
+  }
+}
 
 async function notifyComment(
   payload: Payload,
