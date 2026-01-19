@@ -36,7 +36,7 @@ export function toSlackMention(
 
   const user = usersConfig.users.find((u) => u.github === githubUser)
   if (user) {
-    return `@${user.slack}`
+    return `<@${user.slack}>`
   } else if (useGithubIfNotFound) {
     return githubMention
   } else {
