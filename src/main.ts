@@ -10,6 +10,7 @@ import {
   saveMetadata,
   Metadata
 } from './metadata.js'
+import { loadUsersConfig, toSlackMention } from './user.js'
 
 /**
  * The main function for the action.
@@ -328,6 +329,10 @@ async function notify(props: notifyProps): Promise<notifyResult> {
   const slackToken = core.getInput('slack-token')
   const slackChannel = core.getInput('slack-channel')
   const slackClient = new WebClient(slackToken)
+  const userConfig = core.getInput('users')
+  if (userConfig) {
+    loadUsersConfig(userConfig)
+  }
 
   // post message
   const params = {
@@ -460,6 +465,14 @@ function createMessageBody(rawBody: string): (KnownBlock | Block)[] {
   // imgタグを`(image)`に置換
   const imgTagRegex = /<img [^>]*src="[^"]*"[^>]*>/g
   let body = rawBody.replace(imgTagRegex, '[スレッドに画像を表示]')
+
+  // mentionをslack形式に変換
+  // @username -> <@userid>
+  const mentionRegex = /@([a-zA-Z0-9-_]+)/g
+  body = body.replace(mentionRegex, (match) => {
+    return toSlackMention(match)
+  })
+
   // markdownをslack形式に変換
   body = slackifyMarkdown(body)
 
