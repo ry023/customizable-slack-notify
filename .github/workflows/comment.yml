@@ -30,3 +30,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           slack-token: ${{ secrets.SLACK_BOT_TOKEN }}
           slack-channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          users: |
+            users:
+            - github: ry023
+              slack: ${{ secrets.SLACK_USER_ID }}
