@@ -25,7 +25,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Post Comment
-        uses: ry023/customizable-slack-notify@dev
+        uses: ry023/customizable-slack-notify@user-mention
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           slack-token: ${{ secrets.SLACK_BOT_TOKEN }}
