@@ -1,7 +1,7 @@
-import {parse} from 'yaml'
+import { parse } from 'yaml'
 
 type UsersConfig = {
-  users: {github: string; slack: string}[]
+  users: { github: string; slack: string }[]
 }
 
 let usersConfig: UsersConfig
@@ -28,7 +28,10 @@ export function loadUsersConfig(rawYaml: string) {
   usersConfig = conf as UsersConfig
 }
 
-export function toSlackMention(githubMention: string, useGithubIfNotFound: boolean = true): string {
+export function toSlackMention(
+  githubMention: string,
+  useGithubIfNotFound: boolean = true
+): string {
   const githubUser = githubMention.replace(/^@/, '')
 
   const user = usersConfig.users.find((u) => u.github === githubUser)
