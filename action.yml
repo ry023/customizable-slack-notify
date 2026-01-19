@@ -18,6 +18,9 @@ inputs:
   slack-channel:
     description: Slack channel to post message
     required: true
+  users:
+    description: A map of GitHub usernames to Slack user IDs in YAML format
+    required: false
 
 # Define your outputs here.
 outputs:
