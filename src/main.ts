@@ -10,7 +10,7 @@ import {
   saveMetadata,
   Metadata
 } from './metadata.js'
-import { toSlackMention } from './user.js'
+import { loadUsersConfig, toSlackMention } from './user.js'
 
 /**
  * The main function for the action.
@@ -329,6 +329,10 @@ async function notify(props: notifyProps): Promise<notifyResult> {
   const slackToken = core.getInput('slack-token')
   const slackChannel = core.getInput('slack-channel')
   const slackClient = new WebClient(slackToken)
+  const userConfig = core.getInput('users')
+  if (userConfig) {
+    loadUsersConfig(userConfig)
+  }
 
   // post message
   const params = {
